@@ -1,0 +1,136 @@
+/* App.css - Main Layout Styles */
+.app-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100vw;
+  background-color: var(--bg-darker);
+  overflow: hidden;
+}
+
+/* Header */
+.app-header {
+  height: 52px;
+  background-color: var(--bg-dark);
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  z-index: 10;
+  flex-shrink: 0;
+}
+
+.app-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 1.15rem;
+  background: var(--gradient-primary);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.brand-icon {
+  color: var(--accent-primary);
+  -webkit-text-fill-color: initial;
+}
+
+.header-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.current-path {
+  background: rgba(255, 255, 255, 0.05);
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color);
+  color: var(--text-main);
+  max-width: 400px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Main Split View Area */
+.app-body {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Left Sidebar - Explorer */
+.sidebar-panel {
+  width: 280px;
+  min-width: 200px;
+  max-width: 450px;
+  background-color: var(--bg-dark);
+  border-right: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+
+/* Right Main Content Area */
+.main-content-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background-color: var(--bg-darker);
+}
+
+/* Top: Thumbnail Strip / Grid Section */
+.thumbnails-section {
+  height: 240px;
+  min-height: 120px;
+  max-height: 50%;
+  background-color: var(--bg-dark);
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  position: relative;
+}
+
+/* Bottom: Main Media Viewer Section */
+.viewer-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background-color: #05070a;
+  position: relative;
+}
+
+/* Resizer Handles */
+.resizer-v {
+  width: 4px;
+  background: var(--border-color);
+  cursor: col-resize;
+  transition: background var(--transition-fast);
+  z-index: 5;
+}
+
+.resizer-v:hover, .resizer-v.resizing {
+  background: var(--accent-primary);
+}
+
+.resizer-h {
+  height: 4px;
+  background: var(--border-color);
+  cursor: row-resize;
+  transition: background var(--transition-fast);
+  z-index: 5;
+}
+
+.resizer-h:hover, .resizer-h.resizing {
+  background: var(--accent-primary);
+}
