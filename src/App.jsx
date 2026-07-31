@@ -9,12 +9,16 @@ import {
   ChevronLeft,
   ChevronRight,
   HardDrive,
-  Sparkles
+  Sparkles,
+  Sliders
 } from 'lucide-react'
+import MenuBar from './components/MenuBar'
 import Explorer from './components/Explorer'
 import ThumbnailGrid from './components/ThumbnailGrid'
 import ImageViewer from './components/ImageViewer'
 import VideoViewer from './components/VideoViewer'
+import FileProperties from './components/FileProperties'
+import { openDirectoryPicker, scanDirectoryHandle } from './utils/fileSystem'
 import './App.css'
 
 export default function App() {
@@ -25,11 +29,19 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
 
+  // Visibility States for Panels
+  const [showSidebar, setShowSidebar] = useState(true)
+  const [showThumbnails, setShowThumbnails] = useState(true)
+  const [showProperties, setShowProperties] = useState(true)
+
   // Resizable Panel dimensions
   const [sidebarWidth, setSidebarWidth] = useState(260)
-  const [thumbnailHeight, setThumbnailHeight] = useState(240)
+  const [thumbnailHeight, setThumbnailHeight] = useState(220)
+  const [propertiesWidth, setPropertiesWidth] = useState(280)
+
   const isDraggingSidebar = useRef(false)
   const isDraggingThumbnails = useRef(false)
+  const isDraggingProperties = useRef(false)
 
   const viewerContainerRef = useRef(null)
 
@@ -45,22 +57,46 @@ export default function App() {
     }
   }, [activeFolder])
 
+  // Open Folder Action
+  const handleOpenFolder = async () => {
+    try {
+      setIsLoading(true)
+      const dirHandle = await openDirectoryPicker()
+      if (!dirHandle) {
+        setIsLoading(false)
+        return
+      }
+      const rootNode = await scanDirectoryHandle(dirHandle)
+      setTreeData(rootNode)
+      setActiveFolder(rootNode)
+    } catch (err) {
+      console.warn('Failed to open directory:', err)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   // Mouse Drag Resizing handlers
   useEffect(() => {
     const handleMouseMove = (e) => {
       if (isDraggingSidebar.current) {
-        setSidebarWidth(Math.min(Math.max(e.clientX, 180), 500))
+        setSidebarWidth(Math.min(Math.max(e.clientX, 160), 480))
       }
       if (isDraggingThumbnails.current) {
-        // Offset by header (52px)
-        const newH = e.clientY - 52
-        setThumbnailHeight(Math.min(Math.max(newH, 100), 500))
+        // Offset by MenuBar (36px) + Header (52px) = 88px
+        const newH = e.clientY - 88
+        setThumbnailHeight(Math.min(Math.max(newH, 100), 450))
+      }
+      if (isDraggingProperties.current) {
+        const newW = window.innerWidth - e.clientX
+        setPropertiesWidth(Math.min(Math.max(newW, 200), 450))
       }
     }
 
     const handleMouseUp = () => {
       isDraggingSidebar.current = false
       isDraggingThumbnails.current = false
+      isDraggingProperties.current = false
     }
 
     window.addEventListener('mousemove', handleMouseMove)
@@ -129,6 +165,18 @@ export default function App() {
 
   return (
     <div className="app-container">
+      {/* Top MenuBar */}
+      <MenuBar 
+        onOpenFolder={handleOpenFolder}
+        onToggleSidebar={() => setShowSidebar(!showSidebar)}
+        showSidebar={showSidebar}
+        onToggleThumbnails={() => setShowThumbnails(!showThumbnails)}
+        showThumbnails={showThumbnails}
+        onToggleProperties={() => setShowProperties(!showProperties)}
+        showProperties={showProperties}
+        onToggleFullscreen={toggleFullscreen}
+      />
+
       {/* Top Header */}
       <header className="app-header">
         <div className="app-brand">
@@ -146,7 +194,7 @@ export default function App() {
             </div>
           ) : (
             <span style={{ color: 'var(--text-dark)', fontSize: '0.85rem' }}>
-              로컬 폴더를 열어서 미디어를 감상하세요
+              상단 메뉴 [파일] → [로컬 폴더 열기]로 시작하세요
             </span>
           )}
         </div>
@@ -155,119 +203,151 @@ export default function App() {
       {/* Main App Body */}
       <div className="app-body">
         {/* Explorer Sidebar */}
-        <aside className="sidebar-panel" style={{ width: sidebarWidth }}>
-          <Explorer 
-            treeData={treeData}
-            setTreeData={setTreeData}
-            activeFolder={activeFolder}
-            setActiveFolder={setActiveFolder}
-            isLoading={isLoading}
-            setIsLoading={setIsLoading}
-          />
-        </aside>
-
-        {/* Resizer Sidebar / Main */}
-        <div 
-          className="resizer-v"
-          onMouseDown={() => { isDraggingSidebar.current = true }}
-        />
+        {showSidebar && (
+          <>
+            <aside className="sidebar-panel" style={{ width: sidebarWidth }}>
+              <Explorer 
+                treeData={treeData}
+                setTreeData={setTreeData}
+                activeFolder={activeFolder}
+                setActiveFolder={setActiveFolder}
+                isLoading={isLoading}
+                setIsLoading={setIsLoading}
+              />
+            </aside>
+            <div 
+              className="resizer-v"
+              onMouseDown={() => { isDraggingSidebar.current = true }}
+            />
+          </>
+        )}
 
         {/* Main Content Area */}
         <main className="main-content-panel">
           {/* Top: Thumbnail Strip / Grid Section */}
-          <section className="thumbnails-section" style={{ height: thumbnailHeight }}>
-            <ThumbnailGrid 
-              mediaFiles={activeMediaFiles}
-              selectedFile={selectedFile}
-              onSelectFile={handleSelectFile}
-            />
-          </section>
+          {showThumbnails && (
+            <>
+              <section className="thumbnails-section" style={{ height: thumbnailHeight }}>
+                <ThumbnailGrid 
+                  mediaFiles={activeMediaFiles}
+                  selectedFile={selectedFile}
+                  onSelectFile={handleSelectFile}
+                />
+              </section>
+              <div 
+                className="resizer-h"
+                onMouseDown={() => { isDraggingThumbnails.current = true }}
+              />
+            </>
+          )}
 
-          {/* Resizer Thumbnails / Viewer */}
-          <div 
-            className="resizer-h"
-            onMouseDown={() => { isDraggingThumbnails.current = true }}
-          />
+          {/* Bottom: Split Media Viewer (Left) + File Properties (Right) */}
+          <div style={{ flex: 1, display: 'flex', overflow: 'hidden', position: 'relative' }}>
+            {/* Left Viewer Section */}
+            <section className="viewer-section" ref={viewerContainerRef} style={{ flex: 1 }}>
+              {selectedFile ? (
+                <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+                  {/* Top Overlay Controls (File Name & Navigation) */}
+                  <div style={{
+                    position: 'absolute',
+                    top: '16px',
+                    left: '16px',
+                    zIndex: 10,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    background: 'rgba(15, 20, 30, 0.75)',
+                    backdropFilter: 'blur(12px)',
+                    padding: '6px 12px',
+                    borderRadius: 'var(--radius-md)',
+                    border: '1px solid var(--border-color)'
+                  }}>
+                    <button 
+                      className="icon-action-btn" 
+                      disabled={!hasPrev} 
+                      onClick={() => navigateFile(-1)}
+                      title="이전 미디어 (←)"
+                    >
+                      <ChevronLeft size={16} />
+                    </button>
 
-          {/* Bottom: Main Media Viewer Section */}
-          <section className="viewer-section" ref={viewerContainerRef}>
-            {selectedFile ? (
-              <div style={{ width: '100%', height: '100%', position: 'relative' }}>
-                {/* Top Overlay Controls (File Name & Navigation) */}
+                    <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-main)', maxWidth: '240px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {selectedFile.name}
+                    </span>
+
+                    <button 
+                      className="icon-action-btn" 
+                      disabled={!hasNext} 
+                      onClick={() => navigateFile(1)}
+                      title="다음 미디어 (→)"
+                    >
+                      <ChevronRight size={16} />
+                    </button>
+                  </div>
+
+                  {/* Top Right Action Buttons */}
+                  <div style={{ position: 'absolute', top: '16px', right: '16px', zIndex: 10, display: 'flex', gap: '6px' }}>
+                    <button 
+                      className={`icon-action-btn ${showProperties ? 'active' : ''}`} 
+                      onClick={() => setShowProperties(!showProperties)} 
+                      title="파일 속성 패널 토글"
+                      style={{ background: 'rgba(15, 20, 30, 0.75)', backdropFilter: 'blur(12px)', border: '1px solid var(--border-color)' }}
+                    >
+                      <Sliders size={18} />
+                    </button>
+
+                    <button 
+                      className="icon-action-btn" 
+                      onClick={toggleFullscreen} 
+                      title="전체 화면 (F)"
+                      style={{ background: 'rgba(15, 20, 30, 0.75)', backdropFilter: 'blur(12px)', border: '1px solid var(--border-color)' }}
+                    >
+                      {isFullscreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
+                    </button>
+                  </div>
+
+                  {/* Render Viewer based on Media Type */}
+                  {selectedFile.mediaType === 'image' ? (
+                    <ImageViewer fileEntry={selectedFile} fileMetadata={fileMetadata} />
+                  ) : (
+                    <VideoViewer fileEntry={selectedFile} />
+                  )}
+                </div>
+              ) : (
                 <div style={{
-                  position: 'absolute',
-                  top: '16px',
-                  left: '16px',
-                  zIndex: 10,
                   display: 'flex',
+                  height: '100%',
                   alignItems: 'center',
-                  gap: '8px',
-                  background: 'rgba(15, 20, 30, 0.75)',
-                  backdropFilter: 'blur(12px)',
-                  padding: '6px 12px',
-                  borderRadius: 'var(--radius-md)',
-                  border: '1px solid var(--border-color)'
+                  justifyContent: 'center',
+                  flexDirection: 'column',
+                  gap: '12px',
+                  color: 'var(--text-dark)'
                 }}>
-                  <button 
-                    className="icon-action-btn" 
-                    disabled={!hasPrev} 
-                    onClick={() => navigateFile(-1)}
-                    title="이전 미디어 (←)"
-                  >
-                    <ChevronLeft size={16} />
-                  </button>
-
-                  <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-main)', maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {selectedFile.name}
-                  </span>
-
-                  <button 
-                    className="icon-action-btn" 
-                    disabled={!hasNext} 
-                    onClick={() => navigateFile(1)}
-                    title="다음 미디어 (→)"
-                  >
-                    <ChevronRight size={16} />
-                  </button>
+                  <HardDrive size={48} strokeWidth={1.2} style={{ color: 'var(--accent-primary)', opacity: 0.6 }} />
+                  <h4 style={{ color: 'var(--text-muted)', fontWeight: 500 }}>미디어 뷰어</h4>
+                  <p style={{ fontSize: '0.85rem' }}>
+                    폴더를 선택하고 상단 썸네일에서 미디어를 선택하세요.
+                  </p>
                 </div>
+              )}
+            </section>
 
-                {/* Fullscreen Button Top Right */}
-                <div style={{ position: 'absolute', top: '16px', right: '16px', zIndex: 10 }}>
-                  <button 
-                    className="icon-action-btn" 
-                    onClick={toggleFullscreen} 
-                    title="전체 화면 (F)"
-                    style={{ background: 'rgba(15, 20, 30, 0.75)', backdropFilter: 'blur(12px)', border: '1px solid var(--border-color)' }}
-                  >
-                    {isFullscreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
-                  </button>
-                </div>
-
-                {/* Render Viewer based on Media Type */}
-                {selectedFile.mediaType === 'image' ? (
-                  <ImageViewer fileEntry={selectedFile} fileMetadata={fileMetadata} />
-                ) : (
-                  <VideoViewer fileEntry={selectedFile} />
-                )}
-              </div>
-            ) : (
-              <div style={{
-                display: 'flex',
-                height: '100%',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexDirection: 'column',
-                gap: '12px',
-                color: 'var(--text-dark)'
-              }}>
-                <HardDrive size={48} strokeWidth={1.2} style={{ color: 'var(--accent-primary)', opacity: 0.6 }} />
-                <h4 style={{ color: 'var(--text-muted)', fontWeight: 500 }}>미디어 뷰어</h4>
-                <p style={{ fontSize: '0.85rem' }}>
-                  좌측에서 폴더를 선택하고 상단 썸네일에서 이미지 또는 동영상을 클릭하세요.
-                </p>
-              </div>
+            {/* Resizer Viewer / Properties */}
+            {showProperties && (
+              <>
+                <div 
+                  className="resizer-v"
+                  onMouseDown={() => { isDraggingProperties.current = true }}
+                />
+                {/* Right Properties Section */}
+                <FileProperties 
+                  fileEntry={selectedFile}
+                  fileMetadata={fileMetadata}
+                  onClose={() => setShowProperties(false)}
+                />
+              </>
             )}
-          </section>
+          </div>
         </main>
       </div>
     </div>

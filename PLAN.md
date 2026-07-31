@@ -53,6 +53,14 @@
 
 ---
 
+## 📌 Phase 7: 파일 속성 패널 & 상단 메뉴바 구현 (Properties Panel & Menu Bar)
+- [x] **Step 7.1**: 상단 메뉴바 컴포넌트 (`MenuBar.jsx`) 구축 ([파일], [보기], [도구], [도움말] 드롭다운 및 단축키 안내 modal)
+- [x] **Step 7.2**: 하단 Viewer 영역 우측 분할 속성 패널 컴포넌트 (`FileProperties.jsx`) 구현 (파일명, 경로, 용량, 해상도/길이, MIME 타입, 수정일, 비주얼 태그 등 상세 정보)
+- [x] **Step 7.3**: 메인 App 통합 및 속성 패널 토글/리사이즈 지원
+- [x] **Git Commit**: `feat: implement top menu bar and right file properties side panel`
+
+---
+
 ## 📌 Future Enhancements (향후 기능 확장 가능 목록)
 - [ ] 슬라이드쇼 (Slideshow) 자동 넘김 모드
 - [ ] 태그 지정 및 즐겨찾기 (Bookmarking / Tagging) 기능 (IndexedDB 연동)
