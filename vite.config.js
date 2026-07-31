@@ -4,7 +4,7 @@ import react from '@vitejs/plugin-react'
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
-  base: './', // Ensures assets load correctly on GitHub Pages & custom subpaths
+  base: '/VisionStudio/', // Exact repository name base path for GitHub Pages
   server: {
     port: 3000,
     open: true
