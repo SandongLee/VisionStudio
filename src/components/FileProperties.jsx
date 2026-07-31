@@ -15,12 +15,17 @@ import {
   ExternalLink,
   Plus,
   Aperture,
-  Compass
+  Compass,
+  Sparkles,
+  Bookmark
 } from 'lucide-react'
 import { getFileFromEntry, getFileExtension } from '../utils/fileSystem'
 import { formatBytes, formatDuration } from '../utils/thumbnailGenerator'
 import { parseFileExif, calculateAspectRatio } from '../utils/exifParser'
 import './FileProperties.css'
+
+// Preset Quick Suggested Tags
+const QUICK_SUGGESTED_TAGS = ['즐겨찾기', '풍경', '인물', '여행', '스크린샷', '중요']
 
 export default function FileProperties({ fileEntry, fileMetadata, onClose }) {
   const [fileObj, setFileObj] = useState(null)
@@ -32,35 +37,42 @@ export default function FileProperties({ fileEntry, fileMetadata, onClose }) {
   const [isParsingExif, setIsParsingExif] = useState(false)
 
   // Custom User Tags State (Persisted in localStorage)
-  const [tags, setTags] = useState([])
+  const [userTags, setUserTags] = useState([])
   const [newTagInput, setNewTagInput] = useState('')
 
-  // Load File & Parse EXIF & Load Saved Tags
+  // Safe Storage Key Helper
+  const getStorageKey = (entry) => {
+    const rawKey = entry.id || entry.path || entry.name
+    return 'vt_tags_v2_' + encodeURIComponent(rawKey)
+  }
+
+  // Load File & EXIF & Saved User Tags
   useEffect(() => {
     let isMounted = true
     let createdUrl = null
 
     setExifData(null)
-    setTags([])
+    setUserTags([])
 
     if (fileEntry) {
-      // Load saved tags from localStorage
-      const savedTags = localStorage.getItem(`tags_${fileEntry.id}`)
-      if (savedTags) {
+      // 1. Load saved tags from localStorage
+      const key = getStorageKey(fileEntry)
+      const saved = localStorage.getItem(key)
+      if (saved) {
         try {
-          setTags(JSON.parse(savedTags))
+          setUserTags(JSON.parse(saved))
         } catch (e) {
-          setTags([])
+          setUserTags([])
         }
       }
 
+      // 2. Load file & EXIF
       getFileFromEntry(fileEntry).then(async (f) => {
         if (isMounted && f) {
           setFileObj(f)
           createdUrl = URL.createObjectURL(f)
           setObjectUrl(createdUrl)
 
-          // Parse EXIF if image
           if (fileEntry.mediaType === 'image') {
             setIsParsingExif(true)
             const parsed = await parseFileExif(f)
@@ -93,23 +105,27 @@ export default function FileProperties({ fileEntry, fileMetadata, onClose }) {
     )
   }
 
-  // Add Tag Handler
-  const handleAddTag = (e) => {
-    e.preventDefault()
-    const trimmed = newTagInput.trim().replace(/^#/, '')
-    if (trimmed && !tags.includes(trimmed)) {
-      const updated = [...tags, trimmed]
-      setTags(updated)
-      localStorage.setItem(`tags_${fileEntry.id}`, JSON.stringify(updated))
+  // Add Custom Tag Handler
+  const handleAddTag = (tagName) => {
+    const trimmed = tagName.trim().replace(/^#/, '')
+    if (trimmed && !userTags.includes(trimmed)) {
+      const updated = [...userTags, trimmed]
+      setUserTags(updated)
+      localStorage.setItem(getStorageKey(fileEntry), JSON.stringify(updated))
       setNewTagInput('')
     }
   }
 
+  const handleFormSubmit = (e) => {
+    e.preventDefault()
+    handleAddTag(newTagInput)
+  }
+
   // Remove Tag Handler
   const handleRemoveTag = (tagToRemove) => {
-    const updated = tags.filter((t) => t !== tagToRemove)
-    setTags(updated)
-    localStorage.setItem(`tags_${fileEntry.id}`, JSON.stringify(updated))
+    const updated = userTags.filter((t) => t !== tagToRemove)
+    setUserTags(updated)
+    localStorage.setItem(getStorageKey(fileEntry), JSON.stringify(updated))
   }
 
   // Copy Filename
@@ -121,10 +137,18 @@ export default function FileProperties({ fileEntry, fileMetadata, onClose }) {
 
   const ext = getFileExtension(fileEntry.name).toUpperCase()
 
-  // Dimensions & Aspect Ratio
+  // Dimensions & Aspect Ratio & Resolution Tags
   const width = fileMetadata ? (fileMetadata.videoWidth || fileMetadata.naturalWidth) : null
   const height = fileMetadata ? (fileMetadata.videoHeight || fileMetadata.naturalHeight) : null
   const aspectRatio = (width && height) ? calculateAspectRatio(width, height) : null
+
+  // Resolution Auto Tag (4K / FHD / HD)
+  let resTag = null
+  if (width && height) {
+    if (width >= 3840 || height >= 2160) resTag = '4K UHD'
+    else if (width >= 1920 || height >= 1080) resTag = 'FHD (1080p)'
+    else if (width >= 1280 || height >= 720) resTag = 'HD (720p)'
+  }
 
   // Camera & GPS Data shorthand
   const camera = exifData ? exifData.camera : null
@@ -167,39 +191,78 @@ export default function FileProperties({ fileEntry, fileMetadata, onClose }) {
         <div className="prop-section">
           <div className="prop-section-title">
             <Tag size={13} style={{ color: 'var(--accent-primary)' }} />
-            사용자 태그 (User Tags)
+            태그 정보 (Tags) ({userTags.length})
           </div>
 
-          <form className="tag-input-row" onSubmit={handleAddTag}>
+          {/* Add Tag Form */}
+          <form className="tag-input-row" onSubmit={handleFormSubmit}>
             <input 
               type="text" 
-              placeholder="새 태그 입력... (Enter)"
+              placeholder="태그 입력 후 Enter..."
               value={newTagInput}
               onChange={(e) => setNewTagInput(e.target.value)}
               className="tag-input"
             />
-            <button type="submit" className="btn btn-sm btn-primary" style={{ padding: '4px 8px' }}>
+            <button type="submit" className="btn btn-sm btn-primary" style={{ padding: '4px 10px' }}>
               <Plus size={14} />
+              <span>추가</span>
             </button>
           </form>
 
-          <div className="prop-tag-list">
-            <span className="prop-tag-chip" style={{ background: 'rgba(255, 255, 255, 0.05)', color: 'var(--text-muted)' }}>
+          {/* Quick Suggested Tag Buttons */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '2px' }}>
+            <span style={{ fontSize: '0.68rem', color: 'var(--text-dark)' }}>빠른 추천 태그:</span>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+              {QUICK_SUGGESTED_TAGS.map((sTag) => (
+                <button
+                  key={sTag}
+                  type="button"
+                  onClick={() => handleAddTag(sTag)}
+                  className="quick-tag-btn"
+                  disabled={userTags.includes(sTag)}
+                >
+                  + #{sTag}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Active Tag Chips List */}
+          <div className="prop-tag-list" style={{ marginTop: '8px' }}>
+            {/* System Auto Tags */}
+            <span className="prop-tag-chip system-tag" title="자동 시스템 태그">
               #{ext}
             </span>
-            <span className="prop-tag-chip" style={{ background: 'rgba(255, 255, 255, 0.05)', color: 'var(--text-muted)' }}>
-              #{fileEntry.mediaType}
+            <span className="prop-tag-chip system-tag" title="미디어 분류 태그">
+              #{fileEntry.mediaType === 'video' ? '동영상' : '이미지'}
             </span>
+            {resTag && (
+              <span className="prop-tag-chip system-tag" title="해상도 규격 태그">
+                #{resTag}
+              </span>
+            )}
+            {aspectRatio && (
+              <span className="prop-tag-chip system-tag" title="화면비 태그">
+                #{aspectRatio}
+              </span>
+            )}
 
-            {tags.map((t) => (
-              <span key={t} className="prop-tag-chip">
+            {/* Custom User Tags */}
+            {userTags.map((t) => (
+              <span key={t} className="prop-tag-chip user-tag">
                 #{t}
-                <button type="button" className="tag-remove-btn" onClick={() => handleRemoveTag(t)}>
-                  <X size={10} />
+                <button type="button" className="tag-remove-btn" onClick={() => handleRemoveTag(t)} title="태그 삭제">
+                  <X size={11} />
                 </button>
               </span>
             ))}
           </div>
+
+          {userTags.length === 0 && (
+            <p style={{ fontSize: '0.72rem', color: 'var(--text-dark)', marginTop: '4px', fontStyle: 'italic' }}>
+              💡 직접 태그를 추가하여 미디어를 분류하세요. (자동 저장됨)
+            </p>
+          )}
         </div>
 
         {/* 2. Image & Media Spec Info */}
@@ -246,7 +309,7 @@ export default function FileProperties({ fileEntry, fileMetadata, onClose }) {
           </div>
 
           {isParsingExif ? (
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-dark)' }}>EXIF 파싱 중...</span>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-dark)' }}>EXIF 메타데이터 파싱 중...</span>
           ) : hasCameraData ? (
             <div className="camera-grid">
               {camera.make && (
