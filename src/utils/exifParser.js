@@ -1,4 +1,4 @@
-// exifParser.js - EXIF Metadata & Windows Explorer Properties (XPKeywords, IPTC, XMP) Extractor
+// exifParser.js - EXIF Metadata & Windows Explorer Properties Multi-Encoding Auto-Decoder
 import exifr from 'exifr'
 
 /**
@@ -21,31 +21,89 @@ export function calculateAspectRatio(width, height) {
 }
 
 /**
- * Helper to decode Windows XPKeywords string (UTF-16LE encoded array or raw string)
+ * Smart Multi-Encoding Auto-Decoder for Korean and International EXIF/Windows Tags
+ * Handles UTF-16LE (Windows XPKeywords), UTF-8 (XMP), EUC-KR/CP949 (Legacy IPTC), and Mojibake repair
+ */
+function decodeSmartString(rawInput) {
+  if (rawInput === null || rawInput === undefined) return ''
+
+  // 1. If already a string, check for Mojibake (UTF-8 bytes misread as ISO-8859-1)
+  if (typeof rawInput === 'string') {
+    let cleaned = rawInput.replace(/\0/g, '').trim()
+    
+    // Attempt Mojibake fix (e.g. "ì•„ìDëžë" -> "아이슬란드")
+    try {
+      const fixed = decodeURIComponent(escape(cleaned))
+      if (fixed && !fixed.includes('') && /[가-힣]/.test(fixed)) {
+        return fixed
+      }
+    } catch (e) {
+      // Ignore fallback
+    }
+    return cleaned
+  }
+
+  // 2. If Array / Buffer / Uint8Array
+  let u8 = null
+  if (rawInput instanceof Uint8Array) {
+    u8 = rawInput
+  } else if (Array.isArray(rawInput)) {
+    u8 = new Uint8Array(rawInput)
+  } else if (rawInput.buffer) {
+    u8 = new Uint8Array(rawInput.buffer, rawInput.byteOffset || 0, rawInput.byteLength || rawInput.length)
+  }
+
+  if (!u8 || u8.length === 0) return ''
+
+  // A. Try UTF-16LE (Primary for Windows XPKeywords)
+  try {
+    const text16 = new TextDecoder('utf-16le').decode(u8).replace(/\0/g, '').trim()
+    // If it yields valid Korean or readable ASCII, return it
+    if (/[가-힣]/.test(text16) || (/^[a-zA-Z0-9\s;,._#-]+$/.test(text16) && text16.length > 0)) {
+      return text16
+    }
+  } catch (e) {}
+
+  // B. Try EUC-KR / CP949 (Legacy Windows Korean IPTC)
+  try {
+    const textEuc = new TextDecoder('euc-kr').decode(u8).replace(/\0/g, '').trim()
+    if (/[가-힣]/.test(textEuc)) {
+      return textEuc
+    }
+  } catch (e) {}
+
+  // C. Try UTF-8
+  try {
+    const textUtf8 = new TextDecoder('utf-8', { fatal: true }).decode(u8).replace(/\0/g, '').trim()
+    if (textUtf8) return textUtf8
+  } catch (e) {}
+
+  // Fallback UTF-8 lenient
+  try {
+    return new TextDecoder('utf-8').decode(u8).replace(/\0/g, '').trim()
+  } catch (e) {
+    return ''
+  }
+}
+
+/**
+ * Split keywords string into clean individual tag array
  */
 function parseXPKeywords(rawKeywords) {
   if (!rawKeywords) return []
-  let text = ''
-  
-  if (typeof rawKeywords === 'string') {
-    text = rawKeywords
-  } else if (Array.isArray(rawKeywords) || rawKeywords instanceof Uint8Array || rawKeywords instanceof Uint16Array) {
-    try {
-      // Decode UTF-16LE
-      const decoder = new TextDecoder('utf-16le')
-      const buffer = rawKeywords.buffer ? rawKeywords.buffer : new Uint8Array(rawKeywords).buffer
-      text = decoder.decode(buffer)
-    } catch (e) {
-      text = String.fromCharCode.apply(null, rawKeywords)
-    }
+
+  let decodedText = ''
+  if (Array.isArray(rawKeywords) && typeof rawKeywords[0] === 'string') {
+    decodedText = rawKeywords.map(decodeSmartString).join(';')
+  } else {
+    decodedText = decodeSmartString(rawKeywords)
   }
 
-  // Windows tags are semicolon (;) or comma (,) separated
-  return text
-    .replace(/\0/g, '') // remove null bytes
+  // Windows tags are separated by semicolon (;), comma (,), or null bytes
+  return decodedText
     .split(/[;,]/)
     .map((k) => k.trim().replace(/^#/, ''))
-    .filter((k) => k.length > 0)
+    .filter((k) => k.length > 0 && !/^[\s\0]+$/.test(k))
 }
 
 export async function parseFileExif(file) {
@@ -59,12 +117,12 @@ export async function parseFileExif(file) {
       iptc: true,
       xmp: true,
       mergeOutput: true,
-      reviveValues: true
+      reviveValues: false // Get raw binary buffers for XPKeywords to allow precise UTF-16LE / EUC-KR decoding
     })
 
     if (!rawData) return null
 
-    // 1. Extract Windows Explorer & IPTC Tags (XPKeywords, Keywords, Subject)
+    // 1. Extract & Auto-Decode Windows Explorer & IPTC Tags (XPKeywords, Keywords, Subject)
     let fileMetadataTags = []
 
     if (rawData.XPKeywords) {
@@ -72,15 +130,15 @@ export async function parseFileExif(file) {
     }
     if (rawData.Keywords) {
       if (Array.isArray(rawData.Keywords)) {
-        fileMetadataTags.push(...rawData.Keywords)
-      } else if (typeof rawData.Keywords === 'string') {
+        rawData.Keywords.forEach((k) => fileMetadataTags.push(...parseXPKeywords(k)))
+      } else {
         fileMetadataTags.push(...parseXPKeywords(rawData.Keywords))
       }
     }
     if (rawData.Subject) {
       if (Array.isArray(rawData.Subject)) {
-        fileMetadataTags.push(...rawData.Subject)
-      } else if (typeof rawData.Subject === 'string') {
+        rawData.Subject.forEach((s) => fileMetadataTags.push(...parseXPKeywords(s)))
+      } else {
         fileMetadataTags.push(...parseXPKeywords(rawData.Subject))
       }
     }
@@ -89,13 +147,14 @@ export async function parseFileExif(file) {
     fileMetadataTags = Array.from(new Set(fileMetadataTags))
 
     // 2. Extract Windows Title & Rating
-    const winTitle = rawData.XPTitle || rawData.Title || rawData.Headline || null
+    const rawTitle = rawData.XPTitle || rawData.Title || rawData.Headline || null
+    const winTitle = rawTitle ? decodeSmartString(rawTitle) : null
     const winRating = rawData.Rating || rawData.XPRating || null
 
     // 3. Extract Camera Info
     const camera = {
-      make: rawData.Make || null,
-      model: rawData.Model || null,
+      make: rawData.Make ? decodeSmartString(rawData.Make) : null,
+      model: rawData.Model ? decodeSmartString(rawData.Model) : null,
       lens: rawData.LensModel || rawData.LensInfo || null,
       fNumber: rawData.FNumber ? `f/${rawData.FNumber}` : null,
       exposureTime: rawData.ExposureTime ? (
@@ -117,7 +176,7 @@ export async function parseFileExif(file) {
     const image = {
       colorSpace: rawData.ColorSpace === 1 ? 'sRGB' : (rawData.ColorSpace ? String(rawData.ColorSpace) : 'sRGB'),
       dateTimeOriginal: rawData.DateTimeOriginal ? new Date(rawData.DateTimeOriginal).toLocaleString() : null,
-      software: rawData.Software || null,
+      software: rawData.Software ? decodeSmartString(rawData.Software) : null,
       title: winTitle,
       rating: winRating
     }
