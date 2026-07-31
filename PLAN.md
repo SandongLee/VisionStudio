@@ -61,6 +61,17 @@
 
 ---
 
+## 📌 Phase 8: 속성창 EXIF 파싱 (카메라/GPS/이미지 메타데이터) & 사용자 태그 관리
+- [x] **Step 8.1**: `exifr` 파서 기반 이미지 EXIF 메타데이터 extraction 유틸리티 (`src/utils/exifParser.js`) 구현
+- [x] **Step 8.2**: `FileProperties.jsx` 컴포넌트 확장:
+  - **카메라 정보**: 제조사(Make), 모델(Model), 조리개(FNumber), 셔터스피드(ExposureTime), ISO, 초점거리(FocalLength)
+  - **GPS 정보**: 위도(latitude), 경도(longitude), 고도(altitude) + 지도보기(Open Map) 버튼
+  - **이미지 상세**: 종횡비(Aspect Ratio), 색상 공간(Color Space), orientation
+  - **커스텀 태그 관리자**: 태그 추가/삭제 및 `localStorage` 영구 저장을 통한 태그 관리
+- [x] **Git Commit**: `feat: add EXIF camera, GPS data parsing and custom tag manager to file properties panel`
+
+---
+
 ## 📌 Future Enhancements (향후 기능 확장 가능 목록)
 - [ ] 슬라이드쇼 (Slideshow) 자동 넘김 모드
 - [ ] 태그 지정 및 즐겨찾기 (Bookmarking / Tagging) 기능 (IndexedDB 연동)

@@ -1,8 +1,8 @@
-/* FileProperties.css */
+/* FileProperties.css - Extended with EXIF, Camera, GPS, and Custom Tag Manager */
 .properties-panel-container {
-  width: 280px;
-  min-width: 220px;
-  max-width: 400px;
+  width: 300px;
+  min-width: 240px;
+  max-width: 450px;
   height: 100%;
   background: var(--bg-dark);
   border-left: 1px solid var(--border-color);
@@ -20,6 +20,9 @@
   align-items: center;
   justify-content: space-between;
   background: var(--bg-panel);
+  position: sticky;
+  top: 0;
+  z-index: 10;
 }
 
 .properties-title {
@@ -38,7 +41,7 @@
   padding: 16px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 18px;
 }
 
 /* Compact Preview Card */
@@ -70,12 +73,15 @@
 
 .prop-section-title {
   font-size: 0.75rem;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--text-dark);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.06em;
   border-bottom: 1px dashed var(--border-color);
   padding-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .prop-item-row {
@@ -88,6 +94,9 @@
 .prop-label {
   color: var(--text-dark);
   font-size: 0.72rem;
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .prop-value {
@@ -96,18 +105,110 @@
   word-break: break-all;
 }
 
+/* Tag Manager */
+.tag-input-row {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.tag-input {
+  flex: 1;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 4px 8px;
+  font-size: 0.78rem;
+  color: var(--text-main);
+  outline: none;
+}
+
+.tag-input:focus {
+  border-color: var(--border-active);
+}
+
 .prop-tag-list {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+}
+
+.prop-tag-chip {
+  font-size: 0.72rem;
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  background: rgba(99, 102, 241, 0.15);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  color: #a5b4fc;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.tag-remove-btn {
+  border: none;
+  background: transparent;
+  color: #a5b4fc;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1px;
+  border-radius: 50%;
+}
+
+.tag-remove-btn:hover {
+  background: rgba(244, 63, 94, 0.3);
+  color: #fb7185;
+}
+
+/* Camera Spec Grid */
+.camera-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  background: var(--bg-panel);
+  padding: 10px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+}
+
+.camera-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.camera-cell-label {
+  font-size: 0.68rem;
+  color: var(--text-dark);
+}
+
+.camera-cell-val {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+/* GPS Map Button */
+.map-link-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  background: rgba(6, 182, 212, 0.15);
+  border: 1px solid rgba(6, 182, 212, 0.3);
+  color: var(--accent-cyan);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all var(--transition-fast);
   margin-top: 4px;
 }
 
-.prop-tag {
-  font-size: 0.7rem;
-  padding: 2px 8px;
-  border-radius: var(--radius-sm);
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid var(--border-color);
-  color: var(--text-muted);
+.map-link-btn:hover {
+  background: rgba(6, 182, 212, 0.25);
+  transform: translateY(-1px);
 }

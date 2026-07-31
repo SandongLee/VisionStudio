@@ -7,29 +7,68 @@ import {
   FileText, 
   HardDrive, 
   Calendar, 
-  Maximize2, 
+  Camera, 
+  MapPin, 
+  Tag, 
+  Image as ImageIcon, 
   Film, 
-  Image as ImageIcon 
+  ExternalLink,
+  Plus,
+  Aperture,
+  Compass
 } from 'lucide-react'
 import { getFileFromEntry, getFileExtension } from '../utils/fileSystem'
 import { formatBytes, formatDuration } from '../utils/thumbnailGenerator'
+import { parseFileExif, calculateAspectRatio } from '../utils/exifParser'
 import './FileProperties.css'
 
 export default function FileProperties({ fileEntry, fileMetadata, onClose }) {
   const [fileObj, setFileObj] = useState(null)
   const [copied, setCopied] = useState(false)
   const [objectUrl, setObjectUrl] = useState(null)
+  
+  // EXIF Metadata State
+  const [exifData, setExifData] = useState(null)
+  const [isParsingExif, setIsParsingExif] = useState(false)
 
+  // Custom User Tags State (Persisted in localStorage)
+  const [tags, setTags] = useState([])
+  const [newTagInput, setNewTagInput] = useState('')
+
+  // Load File & Parse EXIF & Load Saved Tags
   useEffect(() => {
     let isMounted = true
     let createdUrl = null
 
+    setExifData(null)
+    setTags([])
+
     if (fileEntry) {
-      getFileFromEntry(fileEntry).then((f) => {
+      // Load saved tags from localStorage
+      const savedTags = localStorage.getItem(`tags_${fileEntry.id}`)
+      if (savedTags) {
+        try {
+          setTags(JSON.parse(savedTags))
+        } catch (e) {
+          setTags([])
+        }
+      }
+
+      getFileFromEntry(fileEntry).then(async (f) => {
         if (isMounted && f) {
           setFileObj(f)
           createdUrl = URL.createObjectURL(f)
           setObjectUrl(createdUrl)
+
+          // Parse EXIF if image
+          if (fileEntry.mediaType === 'image') {
+            setIsParsingExif(true)
+            const parsed = await parseFileExif(f)
+            if (isMounted) {
+              setExifData(parsed)
+              setIsParsingExif(false)
+            }
+          }
         }
       })
     }
@@ -54,6 +93,26 @@ export default function FileProperties({ fileEntry, fileMetadata, onClose }) {
     )
   }
 
+  // Add Tag Handler
+  const handleAddTag = (e) => {
+    e.preventDefault()
+    const trimmed = newTagInput.trim().replace(/^#/, '')
+    if (trimmed && !tags.includes(trimmed)) {
+      const updated = [...tags, trimmed]
+      setTags(updated)
+      localStorage.setItem(`tags_${fileEntry.id}`, JSON.stringify(updated))
+      setNewTagInput('')
+    }
+  }
+
+  // Remove Tag Handler
+  const handleRemoveTag = (tagToRemove) => {
+    const updated = tags.filter((t) => t !== tagToRemove)
+    setTags(updated)
+    localStorage.setItem(`tags_${fileEntry.id}`, JSON.stringify(updated))
+  }
+
+  // Copy Filename
   const handleCopyName = () => {
     navigator.clipboard.writeText(fileEntry.name)
     setCopied(true)
@@ -61,6 +120,17 @@ export default function FileProperties({ fileEntry, fileMetadata, onClose }) {
   }
 
   const ext = getFileExtension(fileEntry.name).toUpperCase()
+
+  // Dimensions & Aspect Ratio
+  const width = fileMetadata ? (fileMetadata.videoWidth || fileMetadata.naturalWidth) : null
+  const height = fileMetadata ? (fileMetadata.videoHeight || fileMetadata.naturalHeight) : null
+  const aspectRatio = (width && height) ? calculateAspectRatio(width, height) : null
+
+  // Camera & GPS Data shorthand
+  const camera = exifData ? exifData.camera : null
+  const gps = exifData ? exifData.gps : null
+  const hasCameraData = camera && (camera.make || camera.model || camera.fNumber || camera.iso)
+  const hasGpsData = gps && gps.latitude && gps.longitude
 
   return (
     <div className="properties-panel-container">
@@ -93,9 +163,183 @@ export default function FileProperties({ fileEntry, fileMetadata, onClose }) {
           )}
         </div>
 
-        {/* Section 1: Basic Metadata */}
+        {/* 1. Custom User Tags Manager */}
         <div className="prop-section">
-          <div className="prop-section-title">기본 정보</div>
+          <div className="prop-section-title">
+            <Tag size={13} style={{ color: 'var(--accent-primary)' }} />
+            사용자 태그 (User Tags)
+          </div>
+
+          <form className="tag-input-row" onSubmit={handleAddTag}>
+            <input 
+              type="text" 
+              placeholder="새 태그 입력... (Enter)"
+              value={newTagInput}
+              onChange={(e) => setNewTagInput(e.target.value)}
+              className="tag-input"
+            />
+            <button type="submit" className="btn btn-sm btn-primary" style={{ padding: '4px 8px' }}>
+              <Plus size={14} />
+            </button>
+          </form>
+
+          <div className="prop-tag-list">
+            <span className="prop-tag-chip" style={{ background: 'rgba(255, 255, 255, 0.05)', color: 'var(--text-muted)' }}>
+              #{ext}
+            </span>
+            <span className="prop-tag-chip" style={{ background: 'rgba(255, 255, 255, 0.05)', color: 'var(--text-muted)' }}>
+              #{fileEntry.mediaType}
+            </span>
+
+            {tags.map((t) => (
+              <span key={t} className="prop-tag-chip">
+                #{t}
+                <button type="button" className="tag-remove-btn" onClick={() => handleRemoveTag(t)}>
+                  <X size={10} />
+                </button>
+              </span>
+            ))}
+          </div>
+        </div>
+
+        {/* 2. Image & Media Spec Info */}
+        <div className="prop-section">
+          <div className="prop-section-title">
+            <ImageIcon size={13} style={{ color: 'var(--accent-cyan)' }} />
+            이미지 & 미디어 규격
+          </div>
+
+          {width && height && (
+            <div className="prop-item-row">
+              <span className="prop-label">해상도 (Dimensions)</span>
+              <span className="prop-value">{width} × {height} px {aspectRatio ? `(${aspectRatio})` : ''}</span>
+            </div>
+          )}
+
+          {exifData && exifData.image && exifData.image.colorSpace && (
+            <div className="prop-item-row">
+              <span className="prop-label">색상 공간 (Color Space)</span>
+              <span className="prop-value">{exifData.image.colorSpace}</span>
+            </div>
+          )}
+
+          {fileMetadata && fileMetadata.duration > 0 && (
+            <div className="prop-item-row">
+              <span className="prop-label">비디오 총 재생시간</span>
+              <span className="prop-value">{formatDuration(fileMetadata.duration)} ({Math.round(fileMetadata.duration)}초)</span>
+            </div>
+          )}
+
+          {fileObj && (
+            <div className="prop-item-row">
+              <span className="prop-label">파일 크기</span>
+              <span className="prop-value">{formatBytes(fileObj.size)}</span>
+            </div>
+          )}
+        </div>
+
+        {/* 3. Camera EXIF Metadata */}
+        <div className="prop-section">
+          <div className="prop-section-title">
+            <Camera size={13} style={{ color: 'var(--accent-amber)' }} />
+            카메라 정보 (EXIF)
+          </div>
+
+          {isParsingExif ? (
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-dark)' }}>EXIF 파싱 중...</span>
+          ) : hasCameraData ? (
+            <div className="camera-grid">
+              {camera.make && (
+                <div className="camera-cell">
+                  <span className="camera-cell-label">제조사</span>
+                  <span className="camera-cell-val">{camera.make}</span>
+                </div>
+              )}
+              {camera.model && (
+                <div className="camera-cell">
+                  <span className="camera-cell-label">카메라 모델</span>
+                  <span className="camera-cell-val">{camera.model}</span>
+                </div>
+              )}
+              {camera.fNumber && (
+                <div className="camera-cell">
+                  <span className="camera-cell-label">조리개</span>
+                  <span className="camera-cell-val">{camera.fNumber}</span>
+                </div>
+              )}
+              {camera.exposureTime && (
+                <div className="camera-cell">
+                  <span className="camera-cell-label">셔터 스피드</span>
+                  <span className="camera-cell-val">{camera.exposureTime}</span>
+                </div>
+              )}
+              {camera.iso && (
+                <div className="camera-cell">
+                  <span className="camera-cell-label">ISO 감도</span>
+                  <span className="camera-cell-val">{camera.iso}</span>
+                </div>
+              )}
+              {camera.focalLength && (
+                <div className="camera-cell">
+                  <span className="camera-cell-label">초점 거리</span>
+                  <span className="camera-cell-val">{camera.focalLength}</span>
+                </div>
+              )}
+            </div>
+          ) : (
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-dark)' }}>
+              카메라 EXIF 정보가 포함되어 있지 않습니다.
+            </span>
+          )}
+        </div>
+
+        {/* 4. GPS Location Metadata */}
+        <div className="prop-section">
+          <div className="prop-section-title">
+            <MapPin size={13} style={{ color: 'var(--accent-rose)' }} />
+            GPS 위치 정보
+          </div>
+
+          {hasGpsData ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <div className="prop-item-row">
+                <span className="prop-label">위도 (Latitude)</span>
+                <span className="prop-value">{gps.latitude.toFixed(6)}°</span>
+              </div>
+              <div className="prop-item-row">
+                <span className="prop-label">경도 (Longitude)</span>
+                <span className="prop-value">{gps.longitude.toFixed(6)}°</span>
+              </div>
+              {gps.altitude && (
+                <div className="prop-item-row">
+                  <span className="prop-label">고도 (Altitude)</span>
+                  <span className="prop-value">{gps.altitude}</span>
+                </div>
+              )}
+              <a 
+                href={`https://www.google.com/maps/search/?api=1&query=${gps.latitude},${gps.longitude}`}
+                target="_blank"
+                rel="noreferrer"
+                className="map-link-btn"
+              >
+                <Compass size={14} />
+                Google Maps에서 지도 보기
+                <ExternalLink size={12} />
+              </a>
+            </div>
+          ) : (
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-dark)' }}>
+              GPS 위치 정보가 포함되어 있지 않습니다.
+            </span>
+          )}
+        </div>
+
+        {/* 5. System File Details */}
+        <div className="prop-section">
+          <div className="prop-section-title">
+            <FileText size={13} style={{ color: 'var(--text-muted)' }} />
+            파일 시스템 정보
+          </div>
 
           <div className="prop-item-row">
             <span className="prop-label">파일명</span>
@@ -106,58 +350,6 @@ export default function FileProperties({ fileEntry, fileMetadata, onClose }) {
               </button>
             </div>
           </div>
-
-          <div className="prop-item-row">
-            <span className="prop-label">미디어 유형</span>
-            <span className="prop-value">
-              <span className={`badge ${fileEntry.mediaType === 'video' ? 'badge-video' : 'badge-image'}`}>
-                {fileEntry.mediaType === 'video' ? '동영상 (VIDEO)' : '이미지 (IMAGE)'}
-              </span>
-            </span>
-          </div>
-
-          <div className="prop-item-row">
-            <span className="prop-label">파일 확장자</span>
-            <span className="prop-value">.{ext}</span>
-          </div>
-
-          <div className="prop-item-row">
-            <span className="prop-label">파일 크기</span>
-            <span className="prop-value">
-              {fileObj ? formatBytes(fileObj.size) : '계산 중...'}
-            </span>
-          </div>
-        </div>
-
-        {/* Section 2: Media Specs */}
-        <div className="prop-section">
-          <div className="prop-section-title">미디어 규격</div>
-
-          {fileMetadata && fileMetadata.videoWidth && fileMetadata.videoHeight && (
-            <div className="prop-item-row">
-              <span className="prop-label">해상도 (Dimensions)</span>
-              <span className="prop-value">{fileMetadata.videoWidth} × {fileMetadata.videoHeight} px</span>
-            </div>
-          )}
-
-          {fileMetadata && fileMetadata.duration > 0 && (
-            <div className="prop-item-row">
-              <span className="prop-label">총 재생 시간</span>
-              <span className="prop-value">{formatDuration(fileMetadata.duration)} ({Math.round(fileMetadata.duration)}초)</span>
-            </div>
-          )}
-
-          {fileObj && (
-            <div className="prop-item-row">
-              <span className="prop-label">MIME 타입</span>
-              <span className="prop-value">{fileObj.type || `media/${ext.toLowerCase()}`}</span>
-            </div>
-          )}
-        </div>
-
-        {/* Section 3: System & Path */}
-        <div className="prop-section">
-          <div className="prop-section-title">시스템 정보</div>
 
           {fileObj && (
             <div className="prop-item-row">
@@ -171,16 +363,6 @@ export default function FileProperties({ fileEntry, fileMetadata, onClose }) {
             <span className="prop-value" style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
               {fileEntry.path || fileEntry.name}
             </span>
-          </div>
-        </div>
-
-        {/* Quick Tags */}
-        <div className="prop-section">
-          <div className="prop-section-title">태그 & 속성</div>
-          <div className="prop-tag-list">
-            <span className="prop-tag">#{ext}</span>
-            <span className="prop-tag">#{fileEntry.mediaType}</span>
-            {fileObj && <span className="prop-tag">#{formatBytes(fileObj.size)}</span>}
           </div>
         </div>
       </div>
