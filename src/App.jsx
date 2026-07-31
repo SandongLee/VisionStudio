@@ -18,6 +18,7 @@ import ThumbnailGrid from './components/ThumbnailGrid'
 import ImageViewer from './components/ImageViewer'
 import VideoViewer from './components/VideoViewer'
 import FileProperties from './components/FileProperties'
+import MapView from './components/MapView'
 import { openDirectoryPicker, scanDirectoryHandle } from './utils/fileSystem'
 import './App.css'
 
@@ -28,6 +29,9 @@ export default function App() {
   const [fileMetadata, setFileMetadata] = useState(null)
   const [isLoading, setIsLoading] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
+
+  // View mode state (Normal Viewer vs Google Maps View)
+  const [isMapView, setIsMapView] = useState(false)
 
   // Visibility States for Panels
   const [showSidebar, setShowSidebar] = useState(true)
@@ -148,6 +152,10 @@ export default function App() {
   const handleSelectFile = (file, metadata) => {
     setSelectedFile(file)
     setFileMetadata(metadata)
+    // If selecting file while in map view, return to media viewer
+    if (isMapView) {
+      setIsMapView(false)
+    }
   }
 
   // Previous / Next file navigation
@@ -232,6 +240,8 @@ export default function App() {
                   mediaFiles={activeMediaFiles}
                   selectedFile={selectedFile}
                   onSelectFile={handleSelectFile}
+                  isMapView={isMapView}
+                  onToggleMapView={() => setIsMapView(!isMapView)}
                 />
               </section>
               <div 
@@ -243,9 +253,18 @@ export default function App() {
 
           {/* Bottom: Split Media Viewer (Left) + File Properties (Right) */}
           <div style={{ flex: 1, display: 'flex', overflow: 'hidden', position: 'relative' }}>
-            {/* Left Viewer Section */}
+            {/* Left Viewer Section / Map View */}
             <section className="viewer-section" ref={viewerContainerRef} style={{ flex: 1 }}>
-              {selectedFile ? (
+              {isMapView ? (
+                <MapView 
+                  mediaFiles={activeMediaFiles}
+                  onSelectFileAndReturn={(file) => {
+                    setSelectedFile(file)
+                    setIsMapView(false)
+                  }}
+                  onClose={() => setIsMapView(false)}
+                />
+              ) : selectedFile ? (
                 <div style={{ width: '100%', height: '100%', position: 'relative' }}>
                   {/* Top Overlay Controls (File Name & Navigation) */}
                   <div style={{

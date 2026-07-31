@@ -1,12 +1,12 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import { 
   Search, 
   Image as ImageIcon, 
   Film, 
   Layers, 
-  Play, 
   ArrowUpDown,
-  Filter
+  Filter,
+  MapPin
 } from 'lucide-react'
 import { 
   getMediaThumbnail, 
@@ -20,7 +20,7 @@ function ThumbnailCard({ fileEntry, isSelected, onSelect }) {
   const [thumbData, setThumbData] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
 
-  useEffect(() => {
+  React.useEffect(() => {
     let isMounted = true
     setIsLoading(true)
 
@@ -85,7 +85,9 @@ function ThumbnailCard({ fileEntry, isSelected, onSelect }) {
 export default function ThumbnailGrid({ 
   mediaFiles = [], 
   selectedFile, 
-  onSelectFile 
+  onSelectFile,
+  isMapView,
+  onToggleMapView
 }) {
   const [filterType, setFilterType] = useState('all') // 'all' | 'image' | 'video'
   const [searchQuery, setSearchQuery] = useState('')
@@ -140,6 +142,27 @@ export default function ThumbnailGrid({
             동영상 ({mediaFiles.filter(f => f.mediaType === 'video').length})
           </button>
         </div>
+
+        {/* CENTER BUTTON: Google Maps에서 보기 */}
+        <button 
+          className={`filter-tab ${isMapView ? 'active' : ''}`}
+          onClick={onToggleMapView}
+          style={{
+            background: isMapView ? 'var(--gradient-primary)' : 'rgba(6, 182, 212, 0.15)',
+            color: isMapView ? '#ffffff' : 'var(--accent-cyan)',
+            border: '1px solid rgba(6, 182, 212, 0.4)',
+            padding: '5px 14px',
+            fontWeight: 600,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            boxShadow: isMapView ? 'var(--shadow-glow)' : 'none'
+          }}
+          title="선택된 폴더 파일의 GPS 위치를 Google Maps 지도 썸네일로 확인"
+        >
+          <MapPin size={14} />
+          <span>Google Maps에서 보기</span>
+        </button>
 
         {/* Search & Sort */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>

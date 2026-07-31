@@ -63,12 +63,18 @@
 
 ## 📌 Phase 8: 속성창 EXIF 파싱 (카메라/GPS/이미지 메타데이터) & 사용자 태그 관리
 - [x] **Step 8.1**: `exifr` 파서 기반 이미지 EXIF 메타데이터 extraction 유틸리티 (`src/utils/exifParser.js`) 구현
-- [x] **Step 8.2**: `FileProperties.jsx` 컴포넌트 확장:
-  - **카메라 정보**: 제조사(Make), 모델(Model), 조리개(FNumber), 셔터스피드(ExposureTime), ISO, 초점거리(FocalLength)
-  - **GPS 정보**: 위도(latitude), 경도(longitude), 고도(altitude) + 지도보기(Open Map) 버튼
-  - **이미지 상세**: 종횡비(Aspect Ratio), 색상 공간(Color Space), orientation
-  - **커스텀 태그 관리자**: 태그 추가/삭제 및 `localStorage` 영구 저장을 통한 태그 관리
+- [x] **Step 8.2**: `FileProperties.jsx` 컴포넌트 확장 (카메라 정보, GPS 위치, XPKeywords 윈도우 태그, 커스텀 태그 관리자)
 - [x] **Git Commit**: `feat: add EXIF camera, GPS data parsing and custom tag manager to file properties panel`
+
+---
+
+## 📌 Phase 9: Google Maps 지도 뷰어 (`MapView.jsx`) & 썸네일 마커 클릭 복귀 연동
+- [x] **Step 9.1**: 썸네일 툴바 중앙에 `🗺️ Google Maps에서 보기` 버튼 추가 (`ThumbnailGrid.jsx`)
+- [x] **Step 9.2**: 인터랙티브 지도 뷰어 컴포넌트 (`MapView.jsx`) 구축:
+  - 폴더 내 모든 파일의 EXIF GPS 위치를 비동기 검색 및 파싱
+  - GPS 위치 좌표 상에 사진/동영상 미니 썸네일 프레임 마커(Photo Marker) 바인딩
+  - 썸네일 마커 클릭 시 해당 파일 선택 및 **원래 Media Viewer 화면으로 자동 복귀**
+- [x] **Git Commit**: `feat: implement interactive map view with thumbnail markers and return-on-click navigation`
 
 ---
 
