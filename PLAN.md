@@ -22,10 +22,10 @@
 ---
 
 ## 📌 Phase 3: 썸네일 그리드 & 캐싱 시스템 (Thumbnail Grid & Caching)
-- [ ] **Step 3.1**: 이미지 & 비디오 썸네일 자동 생성 및 Caching 유틸리티 (`src/utils/thumbnailGenerator.js`) 구현
-- [ ] **Step 3.2**: 썸네일 그리드 컴포넌트 (`ThumbnailGrid.jsx`) 구현 (이미지/동영상 구분 뱃지, 비디오 재생시간 표기)
-- [ ] **Step 3.3**: 썸네일 영역 검색어 필터링, 확장자 필터(전체/이미지/동영상), 정렬 기능 추가
-- [ ] **Git Commit**: `feat: implement thumbnail grid generator with filters and caching`
+- [x] **Step 3.1**: 이미지 & 비디오 썸네일 자동 생성 및 Caching 유틸리티 (`src/utils/thumbnailGenerator.js`) 구현
+- [x] **Step 3.2**: 썸네일 그리드 컴포넌트 (`ThumbnailGrid.jsx`) 구현 (이미지/동영상 구분 뱃지, 비디오 재생시간 표기)
+- [x] **Step 3.3**: 썸네일 영역 검색어 필터링, 확장자 필터(전체/이미지/동영상), 정렬 기능 추가
+- [x] **Git Commit**: `feat: implement thumbnail grid generator with filters and caching`
 
 ---
 
