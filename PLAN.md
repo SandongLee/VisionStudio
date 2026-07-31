@@ -30,10 +30,10 @@
 ---
 
 ## 📌 Phase 4: 이미지 뷰어 구현 (Advanced Image Viewer)
-- [ ] **Step 4.1**: 이미지 뷰어 컴포넌트 (`ImageViewer.jsx`) 구축 - 캔버스/SVG/IMG 기반 줌(Zoom In/Out), 팬(Pan/Drag)
-- [ ] **Step 4.2**: 90도 회전, 상하/좌우 반전, 핏 화면 / 원본 100% 뷰 조작 컨트롤러 구축
-- [ ] **Step 4.3**: 이미지 정보 패널 (파일명, 해상도, 용량, EXIF/마지막 수정일) 팝오버 기능 추가
-- [ ] **Git Commit**: `feat: implement interactive image viewer with zoom, pan, rotation`
+- [x] **Step 4.1**: 이미지 뷰어 컴포넌트 (`ImageViewer.jsx`) 구축 - 캔버스/SVG/IMG 기반 줌(Zoom In/Out), 팬(Pan/Drag)
+- [x] **Step 4.2**: 90도 회전, 상하/좌우 반전, 핏 화면 / 원본 100% 뷰 조작 컨트롤러 구축
+- [x] **Step 4.3**: 이미지 정보 패널 (파일명, 해상도, 용량, EXIF/마지막 수정일) 팝오버 기능 추가
+- [x] **Git Commit**: `feat: implement interactive image viewer with zoom, pan, rotation`
 
 ---
 
