@@ -16,8 +16,9 @@ import {
   Plus,
   Aperture,
   Compass,
-  Sparkles,
-  Bookmark
+  Star,
+  HardDriveUpload,
+  Info
 } from 'lucide-react'
 import { getFileFromEntry, getFileExtension } from '../utils/fileSystem'
 import { formatBytes, formatDuration } from '../utils/thumbnailGenerator'
@@ -55,7 +56,7 @@ export default function FileProperties({ fileEntry, fileMetadata, onClose }) {
     setUserTags([])
 
     if (fileEntry) {
-      // 1. Load saved tags from localStorage
+      // 1. Load saved user tags from localStorage
       const key = getStorageKey(fileEntry)
       const saved = localStorage.getItem(key)
       if (saved) {
@@ -66,7 +67,7 @@ export default function FileProperties({ fileEntry, fileMetadata, onClose }) {
         }
       }
 
-      // 2. Load file & EXIF
+      // 2. Load file & EXIF/Windows Metadata
       getFileFromEntry(fileEntry).then(async (f) => {
         if (isMounted && f) {
           setFileObj(f)
@@ -150,9 +151,13 @@ export default function FileProperties({ fileEntry, fileMetadata, onClose }) {
     else if (width >= 1280 || height >= 720) resTag = 'HD (720p)'
   }
 
-  // Camera & GPS Data shorthand
+  // Camera, GPS & Windows Embedded Metadata shorthand
   const camera = exifData ? exifData.camera : null
   const gps = exifData ? exifData.gps : null
+  const winTags = (exifData && exifData.fileMetadataTags) ? exifData.fileMetadataTags : []
+  const winTitle = exifData && exifData.image ? exifData.image.title : null
+  const winRating = exifData && exifData.image ? exifData.image.rating : null
+
   const hasCameraData = camera && (camera.make || camera.model || camera.fNumber || camera.iso)
   const hasGpsData = gps && gps.latitude && gps.longitude
 
@@ -187,18 +192,18 @@ export default function FileProperties({ fileEntry, fileMetadata, onClose }) {
           )}
         </div>
 
-        {/* 1. Custom User Tags Manager */}
+        {/* 1. Tag Manager Section */}
         <div className="prop-section">
           <div className="prop-section-title">
             <Tag size={13} style={{ color: 'var(--accent-primary)' }} />
-            태그 정보 (Tags) ({userTags.length})
+            태그 정보 (Tags)
           </div>
 
-          {/* Add Tag Form */}
+          {/* Add Custom Tag Form */}
           <form className="tag-input-row" onSubmit={handleFormSubmit}>
             <input 
               type="text" 
-              placeholder="태그 입력 후 Enter..."
+              placeholder="앱 커스텀 태그 추가... (Enter)"
               value={newTagInput}
               onChange={(e) => setNewTagInput(e.target.value)}
               className="tag-input"
@@ -226,6 +231,23 @@ export default function FileProperties({ fileEntry, fileMetadata, onClose }) {
               ))}
             </div>
           </div>
+
+          {/* Windows File Embedded Tags (XPKeywords / IPTC / XMP) */}
+          {winTags.length > 0 && (
+            <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <span style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--accent-amber)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <HardDriveUpload size={12} />
+                Windows 이미지 자체 태그 (XPKeywords):
+              </span>
+              <div className="prop-tag-list">
+                {winTags.map((wt) => (
+                  <span key={wt} className="prop-tag-chip win-file-tag" title="윈도우 파일 탐색기 속성에 저장된 태그">
+                    #{wt}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Active Tag Chips List */}
           <div className="prop-tag-list" style={{ marginTop: '8px' }}>
@@ -257,13 +279,33 @@ export default function FileProperties({ fileEntry, fileMetadata, onClose }) {
               </span>
             ))}
           </div>
-
-          {userTags.length === 0 && (
-            <p style={{ fontSize: '0.72rem', color: 'var(--text-dark)', marginTop: '4px', fontStyle: 'italic' }}>
-              💡 직접 태그를 추가하여 미디어를 분류하세요. (자동 저장됨)
-            </p>
-          )}
         </div>
+
+        {/* Windows Explorer Rating & Title (If available) */}
+        {(winTitle || (winRating && winRating > 0)) && (
+          <div className="prop-section">
+            <div className="prop-section-title">
+              <Star size={13} style={{ color: 'var(--accent-amber)' }} />
+              Windows 설명 & 등급
+            </div>
+            {winTitle && (
+              <div className="prop-item-row">
+                <span className="prop-label">제목/설명</span>
+                <span className="prop-value">{winTitle}</span>
+              </div>
+            )}
+            {winRating && winRating > 0 && (
+              <div className="prop-item-row">
+                <span className="prop-label">등급 (Rating)</span>
+                <span className="prop-value" style={{ color: 'var(--accent-amber)', display: 'flex', gap: '2px' }}>
+                  {[...Array(5)].map((_, i) => (
+                    <Star key={i} size={14} fill={i < winRating ? 'var(--accent-amber)' : 'none'} />
+                  ))}
+                </span>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* 2. Image & Media Spec Info */}
         <div className="prop-section">

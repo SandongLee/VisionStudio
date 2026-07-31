@@ -1,4 +1,4 @@
-/* FileProperties.css - Extended with Tag Styles & EXIF Specs */
+/* FileProperties.css - Extended with XPKeywords & Windows Metadata Tags */
 .properties-panel-container {
   width: 300px;
   min-width: 240px;
@@ -162,6 +162,13 @@
   align-items: center;
   gap: 4px;
   font-weight: 500;
+}
+
+/* Windows File Embedded XPKeywords Chip */
+.prop-tag-chip.win-file-tag {
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  color: #fcd34d;
 }
 
 .prop-tag-chip.system-tag {
