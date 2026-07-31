@@ -14,10 +14,10 @@
 ---
 
 ## 📌 Phase 2: Explorer & File System Access API 구현 (Local Directory Integration)
-- [ ] **Step 2.1**: File System Access API (`showDirectoryPicker`) 모듈 및 fallback (`webkitdirectory`) 구현 (`src/utils/fileSystem.js`)
-- [ ] **Step 2.2**: 탐색기 사이드바 컴포넌트 (`Explorer.jsx`) 구축 - 로컬 폴더 선택, 재귀적 폴더/파일 트리 렌더링
-- [ ] **Step 2.3**: Explorer에서 폴더/파일 클릭 시 현재 선택 항목(Active item / Active folder) 전역 상태 연동
-- [ ] **Git Commit**: `feat: implement file explorer and directory picker integration`
+- [x] **Step 2.1**: File System Access API (`showDirectoryPicker`) 모듈 및 fallback (`webkitdirectory`) 구현 (`src/utils/fileSystem.js`)
+- [x] **Step 2.2**: 탐색기 사이드바 컴포넌트 (`Explorer.jsx`) 구축 - 로컬 폴더 선택, 재귀적 폴더/파일 트리 렌더링
+- [x] **Step 2.3**: Explorer에서 폴더/파일 클릭 시 현재 선택 항목(Active item / Active folder) 전역 상태 연동
+- [x] **Git Commit**: `feat: implement file explorer and directory picker integration`
 
 ---
 
