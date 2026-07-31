@@ -6,7 +6,6 @@ import {
   X, 
   RefreshCw, 
   Compass, 
-  Image as ImageIcon,
   ArrowLeft
 } from 'lucide-react'
 import { getFileFromEntry } from '../utils/fileSystem'
@@ -21,7 +20,7 @@ function AutoFitBounds({ markers }) {
   useEffect(() => {
     if (markers && markers.length > 0) {
       const bounds = L.latLngBounds(markers.map((m) => [m.gps.latitude, m.gps.longitude]))
-      map.fitBounds(bounds, { padding: [50, 50], maxZoom: 16 })
+      map.fitBounds(bounds, { padding: [40, 40], maxZoom: 16 })
     }
   }, [markers, map])
 
@@ -81,22 +80,22 @@ export default function MapView({
   // Default Center (Seoul / Default World view)
   const defaultCenter = [37.5665, 126.9780]
 
-  // Create Custom HTML Leaflet DivIcon with photo thumbnail preview
+  // Create Custom HTML Leaflet DivIcon with compact 32x32 thumbnail marker
   const createThumbnailIcon = (item) => {
     const thumbSrc = item.thumbnailUrl
     const htmlString = `
-      <div className="photo-marker-pin" title="${item.fileEntry.name}">
+      <div class="photo-marker-pin" title="${item.fileEntry.name}">
         ${thumbSrc 
           ? `<img src="${thumbSrc}" class="photo-marker-img" alt="${item.fileEntry.name}" />`
-          : `<div style="color: white; display: flex; align-items: center; justify-content: center; width: 100%; height: 100%;">📷</div>`
+          : `<div style="color: white; font-size: 10px;">📷</div>`
         }
       </div>
     `
     return L.divIcon({
       html: htmlString,
       className: 'custom-photo-marker-wrapper',
-      iconSize: [44, 44],
-      iconAnchor: [22, 22]
+      iconSize: [32, 32],
+      iconAnchor: [16, 16]
     })
   }
 
@@ -105,9 +104,9 @@ export default function MapView({
       {/* Top Floating Overlay Bar */}
       <div className="map-top-bar">
         <div className="map-info-title">
-          <MapPin size={18} style={{ color: 'var(--accent-cyan)' }} />
+          <MapPin size={16} style={{ color: 'var(--accent-cyan)' }} />
           <span>Google Maps / 지도 뷰어</span>
-          <span className="badge badge-image" style={{ marginLeft: '8px' }}>
+          <span className="badge badge-image" style={{ marginLeft: '6px', fontSize: '0.68rem' }}>
             GPS 미디어 ({gpsMediaList.length} / {mediaFiles.length})
           </span>
         </div>
@@ -117,13 +116,14 @@ export default function MapView({
             className="btn btn-sm btn-primary" 
             onClick={onClose}
             title="원래 메인 뷰어로 돌아가기"
+            style={{ padding: '4px 10px', fontSize: '0.78rem' }}
           >
-            <ArrowLeft size={14} />
+            <ArrowLeft size={13} />
             <span>뷰어로 돌아가기</span>
           </button>
 
           <button className="icon-action-btn" onClick={onClose} title="닫기">
-            <X size={16} />
+            <X size={15} />
           </button>
         </div>
       </div>
@@ -131,9 +131,9 @@ export default function MapView({
       {/* Loading Overlay */}
       {isLoading && (
         <div className="map-empty-overlay">
-          <RefreshCw className="spin" size={32} style={{ color: 'var(--accent-cyan)' }} />
-          <p style={{ color: 'var(--text-main)', fontWeight: 500, marginTop: '8px' }}>
-            폴더 내 파일의 GPS 위치 정보를 분석 중입니다...
+          <RefreshCw className="spin" size={28} style={{ color: 'var(--accent-cyan)' }} />
+          <p style={{ color: 'var(--text-main)', fontWeight: 500, fontSize: '0.85rem', marginTop: '6px' }}>
+            폴더 내 파일의 GPS 위치 정보를 파싱하고 있습니다...
           </p>
         </div>
       )}
@@ -141,13 +141,13 @@ export default function MapView({
       {/* Empty State Overlay if no GPS metadata found */}
       {!isLoading && gpsMediaList.length === 0 && (
         <div className="map-empty-overlay">
-          <Compass size={40} style={{ color: 'var(--accent-amber)' }} />
-          <h4 style={{ color: 'var(--text-main)', fontWeight: 600 }}>GPS 위치 데이터 없음</h4>
-          <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-            현재 폴더의 이미지/동영상 파일에 저장된 GPS 위도/경도 정보가 없습니다.
+          <Compass size={36} style={{ color: 'var(--accent-amber)' }} />
+          <h4 style={{ color: 'var(--text-main)', fontWeight: 600, fontSize: '0.95rem' }}>GPS 위치 데이터 없음</h4>
+          <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+            현재 폴더의 미디어 파일에 저장된 GPS 위치 정보가 없습니다.
           </p>
-          <button className="btn btn-sm btn-primary" onClick={onClose} style={{ marginTop: '8px' }}>
-            <ArrowLeft size={14} />
+          <button className="btn btn-sm btn-primary" onClick={onClose} style={{ marginTop: '6px' }}>
+            <ArrowLeft size={13} />
             메인 뷰어로 돌아가기
           </button>
         </div>
@@ -168,7 +168,7 @@ export default function MapView({
 
         {gpsMediaList.length > 0 && <AutoFitBounds markers={gpsMediaList} />}
 
-        {/* Thumbnail Markers */}
+        {/* Compact Thumbnail Markers */}
         {gpsMediaList.map((item) => (
           <Marker
             key={item.fileEntry.id}
@@ -182,18 +182,20 @@ export default function MapView({
           >
             <Popup className="map-photo-popup">
               <div 
-                style={{ cursor: 'pointer', textAlign: 'center', padding: '4px' }}
+                className="map-popup-content"
                 onClick={() => onSelectFileAndReturn(item.fileEntry)}
               >
-                <img 
-                  src={item.thumbnailUrl} 
-                  alt={item.fileEntry.name} 
-                  style={{ width: '120px', height: '80px', objectFit: 'cover', borderRadius: '4px' }} 
-                />
-                <p style={{ fontSize: '0.78rem', fontWeight: 600, marginTop: '4px', margin: 0 }}>
+                {item.thumbnailUrl && (
+                  <img 
+                    src={item.thumbnailUrl} 
+                    alt={item.fileEntry.name} 
+                    className="map-popup-img"
+                  />
+                )}
+                <p style={{ fontSize: '0.72rem', fontWeight: 600, margin: 0, color: 'var(--text-main)', maxWidth: '140px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {item.fileEntry.name}
                 </p>
-                <span style={{ fontSize: '0.7rem', color: '#6366f1' }}>
+                <span style={{ fontSize: '0.68rem', color: '#818cf8' }}>
                   👆 클릭하여 상세 뷰어로 보기
                 </span>
               </div>

@@ -1,4 +1,4 @@
-/* MapView.css - Interactive Map Viewer with Custom Photo Thumbnail Markers */
+/* MapView.css - Interactive Map Viewer with Compact Photo Thumbnail Markers */
 @import 'leaflet/dist/leaflet.css';
 
 .map-view-container {
@@ -19,14 +19,14 @@
 /* Map Header Floating Overlay Bar */
 .map-top-bar {
   position: absolute;
-  top: 16px;
-  left: 16px;
-  right: 16px;
+  top: 14px;
+  left: 14px;
+  right: 14px;
   z-index: 1000;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 16px;
+  padding: 6px 14px;
   background: rgba(15, 20, 30, 0.85);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
@@ -40,31 +40,31 @@
   align-items: center;
   gap: 8px;
   font-family: var(--font-heading);
-  font-size: 0.88rem;
+  font-size: 0.85rem;
   font-weight: 600;
   color: var(--text-main);
 }
 
-/* Photo Marker Custom DivIcon Style */
+/* Photo Marker Custom DivIcon Style (Compact Thumbnail Size) */
 .photo-marker-pin {
-  width: 44px;
-  height: 44px;
-  border-radius: 8px;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
   background: var(--bg-panel);
   border: 2px solid var(--accent-primary);
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.6), var(--shadow-glow);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
   overflow: hidden;
   cursor: pointer;
-  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.2s;
+  transition: transform 0.15s ease, border-color 0.15s;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .photo-marker-pin:hover {
-  transform: scale(1.25) translateY(-4px);
+  transform: scale(1.2) translateY(-2px);
   border-color: var(--accent-cyan);
-  box-shadow: 0 8px 25px rgba(6, 182, 212, 0.5);
+  box-shadow: 0 4px 12px rgba(6, 182, 212, 0.5);
   z-index: 9999 !important;
 }
 
@@ -72,6 +72,39 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+/* Compact Popup */
+.leaflet-popup-content-wrapper {
+  background: rgba(15, 20, 30, 0.95) !important;
+  backdrop-filter: blur(12px) !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: var(--radius-md) !important;
+  color: var(--text-main) !important;
+  padding: 2px !important;
+  box-shadow: var(--shadow-lg) !important;
+}
+
+.leaflet-popup-tip {
+  background: rgba(15, 20, 30, 0.95) !important;
+}
+
+.map-popup-content {
+  cursor: pointer;
+  text-align: center;
+  padding: 4px 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.map-popup-img {
+  width: 72px;
+  height: 50px;
+  object-fit: cover;
+  border-radius: 4px;
+  border: 1px solid var(--border-color);
 }
 
 /* Map Empty Info state */
