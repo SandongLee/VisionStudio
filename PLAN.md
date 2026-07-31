@@ -70,11 +70,15 @@
 
 ## 📌 Phase 9: Google Maps 지도 뷰어 (`MapView.jsx`) & 썸네일 마커 클릭 복귀 연동
 - [x] **Step 9.1**: 썸네일 툴바 중앙에 `🗺️ Google Maps에서 보기` 버튼 추가 (`ThumbnailGrid.jsx`)
-- [x] **Step 9.2**: 인터랙티브 지도 뷰어 컴포넌트 (`MapView.jsx`) 구축:
-  - 폴더 내 모든 파일의 EXIF GPS 위치를 비동기 검색 및 파싱
-  - GPS 위치 좌표 상에 사진/동영상 미니 썸네일 프레임 마커(Photo Marker) 바인딩
-  - 썸네일 마커 클릭 시 해당 파일 선택 및 **원래 Media Viewer 화면으로 자동 복귀**
+- [x] **Step 9.2**: 인터랙티브 지도 뷰어 컴포넌트 (`MapView.jsx`) 구축 (GPS 위치 스캔 & 32x32 썸네일 마커 연동, 클릭 시 복귀)
 - [x] **Git Commit**: `feat: implement interactive map view with thumbnail markers and return-on-click navigation`
+
+---
+
+## 📌 Phase 10: GitHub Repository 동기화 & 자동 웹 서비스 배포 (GitHub Pages CI/CD)
+- [x] **Step 10.1**: Vite `base: './'` 설정 및 `.github/workflows/deploy.yml` CI/CD 파일 추가
+- [x] **Step 10.2**: GitHub Remote URL 연결 (`https://github.com/sandonglee/VisionStudio.git`) 및 Push 가이드 작성
+- [x] **Git Commit**: `ci: add GitHub Actions workflow and base path for automated GitHub Pages deployment`
 
 ---
 
