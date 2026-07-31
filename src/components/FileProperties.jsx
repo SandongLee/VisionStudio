@@ -18,7 +18,7 @@ import {
   Compass,
   Star,
   HardDriveUpload,
-  Info
+  Clock
 } from 'lucide-react'
 import { getFileFromEntry, getFileExtension } from '../utils/fileSystem'
 import { formatBytes, formatDuration } from '../utils/thumbnailGenerator'
@@ -157,6 +157,7 @@ export default function FileProperties({ fileEntry, fileMetadata, onClose }) {
   const winTags = (exifData && exifData.fileMetadataTags) ? exifData.fileMetadataTags : []
   const winTitle = exifData && exifData.image ? exifData.image.title : null
   const winRating = exifData && exifData.image ? exifData.image.rating : null
+  const createdDate = exifData && exifData.image ? exifData.image.createdDate : (fileObj ? new Date(fileObj.lastModified).toLocaleString() : null)
 
   const hasCameraData = camera && (camera.make || camera.model || camera.fNumber || camera.iso)
   const hasGpsData = gps && gps.latitude && gps.longitude
@@ -456,9 +457,24 @@ export default function FileProperties({ fileEntry, fileMetadata, onClose }) {
             </div>
           </div>
 
+          {/* Creation Date / DateTimeOriginal */}
+          {createdDate && (
+            <div className="prop-item-row">
+              <span className="prop-label" style={{ color: 'var(--accent-cyan)' }}>
+                <Calendar size={11} /> 최초 생성일 / 촬영 일시
+              </span>
+              <span className="prop-value" style={{ fontWeight: 600, color: 'var(--text-main)' }}>
+                {createdDate}
+              </span>
+            </div>
+          )}
+
+          {/* Last Modified Date */}
           {fileObj && (
             <div className="prop-item-row">
-              <span className="prop-label">마지막 수정일</span>
+              <span className="prop-label">
+                <Clock size={11} /> 마지막 수정일 (Last Modified)
+              </span>
               <span className="prop-value">{new Date(fileObj.lastModified).toLocaleString()}</span>
             </div>
           )}

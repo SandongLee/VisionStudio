@@ -1,4 +1,4 @@
-// exifParser.js - EXIF Metadata & Windows Explorer Properties (XPKeywords, IPTC, XMP) Auto-Decoder
+// exifParser.js - EXIF Metadata & Windows Explorer Properties Auto-Decoder
 import exifr from 'exifr'
 
 /**
@@ -56,12 +56,10 @@ function fixLatin1Utf8Mojibake(str) {
 function decodeSmartString(rawInput) {
   if (rawInput === null || rawInput === undefined) return ''
 
-  // If string, fix Mojibake
   if (typeof rawInput === 'string') {
     return fixLatin1Utf8Mojibake(rawInput)
   }
 
-  // If Uint8Array / Buffer
   let u8 = null
   if (rawInput instanceof Uint8Array) {
     u8 = rawInput
@@ -73,7 +71,6 @@ function decodeSmartString(rawInput) {
 
   if (!u8 || u8.length === 0) return ''
 
-  // A. Try UTF-16LE (Primary for Windows XPKeywords)
   try {
     const text16 = new TextDecoder('utf-16le').decode(u8).replace(/\0/g, '').trim()
     if (/[가-힣]/.test(text16) || (/^[a-zA-Z0-9\s;,._#-]+$/.test(text16) && text16.length > 0)) {
@@ -81,7 +78,6 @@ function decodeSmartString(rawInput) {
     }
   } catch (e) {}
 
-  // B. Try EUC-KR / CP949
   try {
     const textEuc = new TextDecoder('euc-kr').decode(u8).replace(/\0/g, '').trim()
     if (/[가-힣]/.test(textEuc)) {
@@ -89,7 +85,6 @@ function decodeSmartString(rawInput) {
     }
   } catch (e) {}
 
-  // C. Try UTF-8
   try {
     const textUtf8 = new TextDecoder('utf-8').decode(u8).replace(/\0/g, '').trim()
     if (textUtf8) {
@@ -113,7 +108,6 @@ function parseXPKeywords(rawKeywords) {
     decodedText = decodeSmartString(rawKeywords)
   }
 
-  // Windows tags are separated by semicolon (;), comma (,), or null bytes
   return decodedText
     .split(/[;,]/)
     .map((k) => k.trim().replace(/^#/, ''))
@@ -136,10 +130,8 @@ export async function parseFileExif(file) {
 
     if (!rawData) return null
 
-    // 1. Extract & Auto-Decode Windows Explorer & IPTC & XMP Tags (subject, XPKeywords, Keywords)
+    // 1. Extract Tags
     let fileMetadataTags = []
-
-    // Priority A: XMP Subject (highest reliability for Korean tags like "강릉", "경포", "사근진엔")
     if (rawData.subject) {
       if (Array.isArray(rawData.subject)) {
         rawData.subject.forEach((s) => fileMetadataTags.push(...parseXPKeywords(s)))
@@ -147,13 +139,9 @@ export async function parseFileExif(file) {
         fileMetadataTags.push(...parseXPKeywords(rawData.subject))
       }
     }
-
-    // Priority B: Windows XPKeywords
     if (rawData.XPKeywords) {
       fileMetadataTags.push(...parseXPKeywords(rawData.XPKeywords))
     }
-
-    // Priority C: IPTC Keywords
     if (rawData.Keywords) {
       if (Array.isArray(rawData.Keywords)) {
         rawData.Keywords.forEach((k) => fileMetadataTags.push(...parseXPKeywords(k)))
@@ -161,25 +149,14 @@ export async function parseFileExif(file) {
         fileMetadataTags.push(...parseXPKeywords(rawData.Keywords))
       }
     }
-
-    // Priority D: XMP Subject alternative casing
-    if (rawData.Subject) {
-      if (Array.isArray(rawData.Subject)) {
-        rawData.Subject.forEach((s) => fileMetadataTags.push(...parseXPKeywords(s)))
-      } else {
-        fileMetadataTags.push(...parseXPKeywords(rawData.Subject))
-      }
-    }
-
-    // Remove duplicates
     fileMetadataTags = Array.from(new Set(fileMetadataTags))
 
-    // 2. Extract Windows Title & Rating
+    // 2. Title & Rating
     const rawTitle = rawData.XPTitle || rawData.Title || rawData.Headline || null
     const winTitle = rawTitle ? decodeSmartString(rawTitle) : null
     const winRating = rawData.Rating || rawData.XPRating || null
 
-    // 3. Extract Camera Info
+    // 3. Camera Info
     const camera = {
       make: rawData.Make ? decodeSmartString(rawData.Make) : null,
       model: rawData.Model ? decodeSmartString(rawData.Model) : null,
@@ -193,17 +170,22 @@ export async function parseFileExif(file) {
       flash: rawData.Flash ? String(rawData.Flash) : null
     }
 
-    // 4. Extract GPS Info
+    // 4. GPS Info
     const gps = {
       latitude: rawData.latitude || null,
       longitude: rawData.longitude || null,
       altitude: rawData.altitude ? `${Math.round(rawData.altitude)}m` : null
     }
 
-    // 5. Extract Image Specs
+    // 5. Creation Date (DateTimeOriginal / CreateDate)
+    const rawCreated = rawData.DateTimeOriginal || rawData.CreateDate || rawData.ModifyDate || null
+    const createdDate = rawCreated ? new Date(rawCreated).toLocaleString() : null
+
+    // 6. Image Specs
     const image = {
       colorSpace: rawData.ColorSpace === 1 ? 'sRGB' : (rawData.ColorSpace ? String(rawData.ColorSpace) : 'sRGB'),
-      dateTimeOriginal: rawData.DateTimeOriginal ? new Date(rawData.DateTimeOriginal).toLocaleString() : null,
+      dateTimeOriginal: createdDate,
+      createdDate: createdDate,
       software: rawData.Software ? decodeSmartString(rawData.Software) : null,
       title: winTitle,
       rating: winRating
