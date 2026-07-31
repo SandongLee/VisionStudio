@@ -38,10 +38,10 @@
 ---
 
 ## 📌 Phase 5: 비디오 뷰어 구현 (Custom Video Viewer with Frame Step & Snapshot)
-- [ ] **Step 5.1**: 비디오 뷰어 컴포넌트 (`VideoViewer.jsx`) 구축 - HTML5 커스텀 컨트롤러 (재생/일시정지, 타임바, 볼륨, 재생시간)
-- [ ] **Step 5.2**: 고급 기능 구현 - 재생 속도(0.25x~2.0x), 10초 이동, 프레임 단위 Step (0.05초 이동)
-- [ ] **Step 5.3**: 비디오 현재 프레임 스냅샷 캡처(다운로드) 및 PiP 모드 지원
-- [ ] **Git Commit**: `feat: implement video viewer with playback speed, frame step, snapshot`
+- [x] **Step 5.1**: 비디오 뷰어 컴포넌트 (`VideoViewer.jsx`) 구축 - HTML5 커스텀 컨트롤러 (재생/일시정지, 타임바, 볼륨, 재생시간)
+- [x] **Step 5.2**: 고급 기능 구현 - 재생 속도(0.25x~2.0x), 10초 이동, 프레임 단위 Step (0.05초 이동)
+- [x] **Step 5.3**: 비디오 현재 프레임 스냅샷 캡처(다운로드) 및 PiP 모드 지원
+- [x] **Git Commit**: `feat: implement video viewer with playback speed, frame step, snapshot`
 
 ---
 
