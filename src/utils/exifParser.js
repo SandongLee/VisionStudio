@@ -1,4 +1,4 @@
-// exifParser.js - EXIF Metadata & Windows Explorer Properties Multi-Encoding Auto-Decoder
+// exifParser.js - EXIF Metadata & Windows Explorer Properties (XPKeywords, IPTC, XMP) Auto-Decoder
 import exifr from 'exifr'
 
 /**
@@ -21,29 +21,47 @@ export function calculateAspectRatio(width, height) {
 }
 
 /**
+ * Repair Mojibake UTF-8 bytes stored as Latin-1 string in IPTC (e.g. Samsung/Android Gallery IPTC Keywords)
+ */
+function fixLatin1Utf8Mojibake(str) {
+  if (typeof str !== 'string') return str
+  const cleaned = str.replace(/\0/g, '').trim()
+  
+  // 1. Try converting charCode byte sequence to UTF-8 TextDecoder
+  try {
+    const bytes = new Uint8Array(cleaned.length)
+    for (let i = 0; i < cleaned.length; i++) {
+      bytes[i] = cleaned.charCodeAt(i) & 0xff
+    }
+    const decoded = new TextDecoder('utf-8').decode(bytes)
+    if (/[가-힣]/.test(decoded)) {
+      return decoded
+    }
+  } catch (e) {}
+
+  // 2. Try URI escape decoding
+  try {
+    const decodedUri = decodeURIComponent(escape(cleaned))
+    if (/[가-힣]/.test(decodedUri)) {
+      return decodedUri
+    }
+  } catch (e) {}
+
+  return cleaned
+}
+
+/**
  * Smart Multi-Encoding Auto-Decoder for Korean and International EXIF/Windows Tags
- * Handles UTF-16LE (Windows XPKeywords), UTF-8 (XMP), EUC-KR/CP949 (Legacy IPTC), and Mojibake repair
  */
 function decodeSmartString(rawInput) {
   if (rawInput === null || rawInput === undefined) return ''
 
-  // 1. If already a string, check for Mojibake (UTF-8 bytes misread as ISO-8859-1)
+  // If string, fix Mojibake
   if (typeof rawInput === 'string') {
-    let cleaned = rawInput.replace(/\0/g, '').trim()
-    
-    // Attempt Mojibake fix (e.g. "ì•„ìDëžë" -> "아이슬란드")
-    try {
-      const fixed = decodeURIComponent(escape(cleaned))
-      if (fixed && !fixed.includes('') && /[가-힣]/.test(fixed)) {
-        return fixed
-      }
-    } catch (e) {
-      // Ignore fallback
-    }
-    return cleaned
+    return fixLatin1Utf8Mojibake(rawInput)
   }
 
-  // 2. If Array / Buffer / Uint8Array
+  // If Uint8Array / Buffer
   let u8 = null
   if (rawInput instanceof Uint8Array) {
     u8 = rawInput
@@ -58,13 +76,12 @@ function decodeSmartString(rawInput) {
   // A. Try UTF-16LE (Primary for Windows XPKeywords)
   try {
     const text16 = new TextDecoder('utf-16le').decode(u8).replace(/\0/g, '').trim()
-    // If it yields valid Korean or readable ASCII, return it
     if (/[가-힣]/.test(text16) || (/^[a-zA-Z0-9\s;,._#-]+$/.test(text16) && text16.length > 0)) {
       return text16
     }
   } catch (e) {}
 
-  // B. Try EUC-KR / CP949 (Legacy Windows Korean IPTC)
+  // B. Try EUC-KR / CP949
   try {
     const textEuc = new TextDecoder('euc-kr').decode(u8).replace(/\0/g, '').trim()
     if (/[가-힣]/.test(textEuc)) {
@@ -74,16 +91,13 @@ function decodeSmartString(rawInput) {
 
   // C. Try UTF-8
   try {
-    const textUtf8 = new TextDecoder('utf-8', { fatal: true }).decode(u8).replace(/\0/g, '').trim()
-    if (textUtf8) return textUtf8
+    const textUtf8 = new TextDecoder('utf-8').decode(u8).replace(/\0/g, '').trim()
+    if (textUtf8) {
+      return fixLatin1Utf8Mojibake(textUtf8)
+    }
   } catch (e) {}
 
-  // Fallback UTF-8 lenient
-  try {
-    return new TextDecoder('utf-8').decode(u8).replace(/\0/g, '').trim()
-  } catch (e) {
-    return ''
-  }
+  return ''
 }
 
 /**
@@ -93,7 +107,7 @@ function parseXPKeywords(rawKeywords) {
   if (!rawKeywords) return []
 
   let decodedText = ''
-  if (Array.isArray(rawKeywords) && typeof rawKeywords[0] === 'string') {
+  if (Array.isArray(rawKeywords)) {
     decodedText = rawKeywords.map(decodeSmartString).join(';')
   } else {
     decodedText = decodeSmartString(rawKeywords)
@@ -117,17 +131,29 @@ export async function parseFileExif(file) {
       iptc: true,
       xmp: true,
       mergeOutput: true,
-      reviveValues: false // Get raw binary buffers for XPKeywords to allow precise UTF-16LE / EUC-KR decoding
+      reviveValues: true
     })
 
     if (!rawData) return null
 
-    // 1. Extract & Auto-Decode Windows Explorer & IPTC Tags (XPKeywords, Keywords, Subject)
+    // 1. Extract & Auto-Decode Windows Explorer & IPTC & XMP Tags (subject, XPKeywords, Keywords)
     let fileMetadataTags = []
 
+    // Priority A: XMP Subject (highest reliability for Korean tags like "강릉", "경포", "사근진엔")
+    if (rawData.subject) {
+      if (Array.isArray(rawData.subject)) {
+        rawData.subject.forEach((s) => fileMetadataTags.push(...parseXPKeywords(s)))
+      } else {
+        fileMetadataTags.push(...parseXPKeywords(rawData.subject))
+      }
+    }
+
+    // Priority B: Windows XPKeywords
     if (rawData.XPKeywords) {
       fileMetadataTags.push(...parseXPKeywords(rawData.XPKeywords))
     }
+
+    // Priority C: IPTC Keywords
     if (rawData.Keywords) {
       if (Array.isArray(rawData.Keywords)) {
         rawData.Keywords.forEach((k) => fileMetadataTags.push(...parseXPKeywords(k)))
@@ -135,6 +161,8 @@ export async function parseFileExif(file) {
         fileMetadataTags.push(...parseXPKeywords(rawData.Keywords))
       }
     }
+
+    // Priority D: XMP Subject alternative casing
     if (rawData.Subject) {
       if (Array.isArray(rawData.Subject)) {
         rawData.Subject.forEach((s) => fileMetadataTags.push(...parseXPKeywords(s)))
