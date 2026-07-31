@@ -2,7 +2,6 @@ import React, { useState, useRef } from 'react'
 import { 
   FolderOpen, 
   Folder, 
-  FolderExpanded, 
   ChevronRight, 
   ChevronDown, 
   FolderTree, 

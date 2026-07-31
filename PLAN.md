@@ -46,10 +46,10 @@
 ---
 
 ## 📌 Phase 6: 메인 뷰어 통합 & UI Polish & Keyboard Shortcuts
-- [ ] **Step 6.1**: Split Pane (사이드바 - 썸네일 - 메인 뷰어) 리사이즈 핸들 조절 기능 구현
-- [ ] **Step 6.2**: 키보드 단축키 지원 (← / → 이전/다음 미디어, Space 재생/일시정지, F/Esc 전체화면)
-- [ ] **Step 6.3**: 비어 있는 상태(Empty State), 로딩 스피너, 에러 처리 UI 세부 다듬기
-- [ ] **Git Commit**: `feat: complete app integration with shortcuts, split layout, and polish`
+- [x] **Step 6.1**: Split Pane (사이드바 - 썸네일 - 메인 뷰어) 리사이즈 핸들 조절 기능 구현
+- [x] **Step 6.2**: 키보드 단축키 지원 (← / → 이전/다음 미디어, Space 재생/일시정지, F/Esc 전체화면)
+- [x] **Step 6.3**: 비어 있는 상태(Empty State), 로딩 스피너, 에러 처리 UI 세부 다듬기
+- [x] **Git Commit**: `feat: complete app integration with shortcuts, split layout, and polish`
 
 ---
 
