@@ -9,7 +9,8 @@ import {
   MapPin,
   Tag,
   FolderTree,
-  X
+  X,
+  Check
 } from 'lucide-react'
 import { 
   getMediaThumbnail, 
@@ -100,22 +101,26 @@ export default function ThumbnailGrid({
   onToggleMapView,
   includeSubfolders,
   onToggleIncludeSubfolders,
-  activeTagQuery,
-  onClearTagQuery
+  selectedTags = [],
+  tagMatchMode = 'OR',
+  fileTagMap = new Map(),
+  onRemoveTag,
+  onClearAllTags,
+  onToggleMatchMode,
+  onOpenTagModal
 }) {
   const [filterType, setFilterType] = useState('all') // 'all' | 'image' | 'video'
   const [searchQuery, setSearchQuery] = useState('')
-  const [sortBy, setSortBy] = useState('name') // 'name' | 'size' | 'type' | 'tag'
-  const [renderLimit, setRenderLimit] = useState(40) // Progressive chunked rendering for large file sets
+  const [sortBy, setSortBy] = useState('name') // 'name' | 'type'
+  const [renderLimit, setRenderLimit] = useState(40)
 
   const scrollAreaRef = useRef(null)
 
-  // Reset progressive render limit when files change
   useEffect(() => {
     setRenderLimit(40)
-  }, [mediaFiles, filterType, searchQuery, activeTagQuery, includeSubfolders])
+  }, [mediaFiles, filterType, searchQuery, selectedTags, tagMatchMode, includeSubfolders])
 
-  // Filter & Tag Sorting Logic
+  // Filter Files Logic
   let filteredFiles = mediaFiles.filter((file) => {
     if (filterType === 'image' && file.mediaType !== 'image') return false
     if (filterType === 'video' && file.mediaType !== 'video') return false
@@ -125,31 +130,25 @@ export default function ThumbnailGrid({
     return true
   })
 
-  // Tag Matching & Sorting (Requirement 3: 태그 검색 시 해당 태그 포함 파일 sorting)
+  // Multi-Tag Matching & Sorting
   let tagMatchedSet = new Set()
-  if (activeTagQuery && activeTagQuery.trim() !== '') {
-    const q = activeTagQuery.toLowerCase()
+  if (selectedTags && selectedTags.length > 0) {
     filteredFiles.forEach((file) => {
-      const matchName = file.name.toLowerCase().includes(q)
-      const matchPath = file.path.toLowerCase().includes(q)
+      const fileTags = fileTagMap.get(file.id) || new Set()
       
-      // Check saved localStorage tags for file
-      const rawKey = file.id || file.path || file.name
-      const saved = localStorage.getItem('vt_tags_v2_' + encodeURIComponent(rawKey))
-      let matchUserTag = false
-      if (saved) {
-        try {
-          const userTags = JSON.parse(saved)
-          matchUserTag = userTags.some((t) => t.toLowerCase().includes(q))
-        } catch (e) {}
+      let isMatch = false
+      if (tagMatchMode === 'AND') {
+        isMatch = selectedTags.every((t) => fileTags.has(t) || file.name.toLowerCase().includes(t.toLowerCase()))
+      } else {
+        isMatch = selectedTags.some((t) => fileTags.has(t) || file.name.toLowerCase().includes(t.toLowerCase()))
       }
 
-      if (matchName || matchPath || matchUserTag) {
+      if (isMatch) {
         tagMatchedSet.add(file.id)
       }
     })
 
-    // Sort matching tag items to the top!
+    // Sort tag matched files to the top!
     filteredFiles.sort((a, b) => {
       const aMatched = tagMatchedSet.has(a.id)
       const bMatched = tagMatchedSet.has(b.id)
@@ -158,7 +157,6 @@ export default function ThumbnailGrid({
       return a.name.localeCompare(b.name, undefined, { numeric: true })
     })
   } else {
-    // Normal Sort logic
     filteredFiles.sort((a, b) => {
       if (sortBy === 'name') {
         return a.name.localeCompare(b.name, undefined, { numeric: true })
@@ -170,7 +168,7 @@ export default function ThumbnailGrid({
     })
   }
 
-  // Progressive infinite scroll load handler for large file sets
+  // Progressive scroll load
   const handleScroll = (e) => {
     const { scrollTop, scrollHeight, clientHeight } = e.target
     if (scrollHeight - scrollTop - clientHeight < 300) {
@@ -211,7 +209,7 @@ export default function ThumbnailGrid({
           </button>
         </div>
 
-        {/* CENTER BUTTONS: Subfolder toggle & Google Maps View */}
+        {/* CENTER BUTTONS: Subfolder toggle, Tag Search & Map View */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
           <button 
             className={`filter-tab ${includeSubfolders ? 'active' : ''}`}
@@ -228,6 +226,20 @@ export default function ThumbnailGrid({
           </button>
 
           <button 
+            className={`filter-tab ${selectedTags.length > 0 ? 'active' : ''}`}
+            onClick={onOpenTagModal}
+            style={{
+              background: selectedTags.length > 0 ? 'rgba(99, 102, 241, 0.25)' : 'rgba(255, 255, 255, 0.05)',
+              color: selectedTags.length > 0 ? '#a5b4fc' : 'var(--text-main)',
+              border: selectedTags.length > 0 ? '1px solid var(--accent-primary)' : '1px solid var(--border-color)',
+              fontWeight: 600
+            }}
+          >
+            <Tag size={13} style={{ color: 'var(--accent-cyan)' }} />
+            <span>태그 선택 검색 {selectedTags.length > 0 ? `(${selectedTags.length})` : ''}</span>
+          </button>
+
+          <button 
             className={`filter-tab ${isMapView ? 'active' : ''}`}
             onClick={onToggleMapView}
             style={{
@@ -237,7 +249,6 @@ export default function ThumbnailGrid({
               padding: '4px 10px',
               fontWeight: 600
             }}
-            title="선택된 폴더 파일의 GPS 위치를 Google Maps 지도 썸네일로 확인"
           >
             <MapPin size={13} />
             <span>Google Maps에서 보기</span>
@@ -271,25 +282,41 @@ export default function ThumbnailGrid({
         </div>
       </div>
 
-      {/* Active Tag Search Filter Banner (Requirement 3) */}
-      {activeTagQuery && (
+      {/* Active Multi-Tag Filter Banner */}
+      {selectedTags.length > 0 && (
         <div className="tag-search-banner">
-          <div className="tag-banner-text">
+          <div className="tag-banner-text" style={{ flexWrap: 'wrap' }}>
             <Tag size={14} style={{ color: 'var(--accent-cyan)' }} />
-            <span>태그 필터링 적용 중:</span>
-            <span className="tag-banner-badge">#{activeTagQuery}</span>
+            <span>다중 태그 필터링 중:</span>
+
+            {selectedTags.map((tag) => (
+              <span key={tag} className="tag-banner-badge" style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                #{tag}
+                <X size={10} style={{ cursor: 'pointer' }} onClick={() => onRemoveTag(tag)} />
+              </span>
+            ))}
+
+            <button 
+              type="button"
+              className="tag-mode-btn active"
+              onClick={onToggleMatchMode}
+              style={{ fontSize: '0.68rem', padding: '1px 6px', marginLeft: '4px' }}
+            >
+              조건: {tagMatchMode === 'OR' ? '하나 이상 (OR)' : '모두 포함 (AND)'}
+            </button>
+
             <span style={{ color: 'var(--text-dark)', marginLeft: '4px' }}>
               ({tagMatchedSet.size}개 파일 매칭됨)
             </span>
           </div>
 
-          <button className="icon-action-btn" onClick={onClearTagQuery} title="태그 필터 해제">
+          <button className="icon-action-btn" onClick={onClearAllTags} title="태그 전체 선택 해제">
             <X size={14} />
           </button>
         </div>
       )}
 
-      {/* Grid Content Body with Progressive Streaming */}
+      {/* Grid Content Body */}
       <div className="thumb-scroll-area" ref={scrollAreaRef} onScroll={handleScroll}>
         {filteredFiles.length > 0 ? (
           <div className="thumb-grid">
@@ -315,7 +342,7 @@ export default function ThumbnailGrid({
             <p>
               {mediaFiles.length === 0 
                 ? '이 폴더에는 표시할 이미지나 동영상이 없습니다.' 
-                : '검색 필터 및 태그 조건에 일치하는 파일이 없습니다.'}
+                : '검색 필터 및 선택한 태그 조건에 일치하는 파일이 없습니다.'}
             </p>
           </div>
         )}

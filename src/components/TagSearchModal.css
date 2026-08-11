@@ -1,14 +1,17 @@
-/* TagSearchModal.css */
+/* TagSearchModal.css - Updated for Multi-Tag Selection & Folder Tag List */
 .tag-modal-card {
-  width: 480px;
+  width: 540px;
+  max-width: 90vw;
+  max-height: 85vh;
   background: var(--bg-panel);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-lg);
-  padding: 20px;
+  padding: 22px;
   display: flex;
   flex-direction: column;
   gap: 16px;
+  overflow-y: auto;
 }
 
 .tag-search-input-row {
@@ -22,7 +25,7 @@
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   padding: 8px 12px;
-  font-size: 0.9rem;
+  font-size: 0.88rem;
   color: var(--text-main);
   outline: none;
 }
@@ -31,23 +34,71 @@
   border-color: var(--border-active);
 }
 
-.suggested-tags-group {
+.tag-mode-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(0, 0, 0, 0.2);
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color);
+  font-size: 0.76rem;
+  color: var(--text-muted);
+}
+
+.tag-mode-btn {
+  padding: 3px 8px;
+  border-radius: 3px;
+  font-size: 0.74rem;
+  font-weight: 500;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.tag-mode-btn.active {
+  background: var(--accent-primary);
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.selected-tags-bar {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  background: rgba(99, 102, 241, 0.08);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
 }
 
-.suggested-tags-title {
-  font-size: 0.75rem;
+.folder-tags-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.folder-tags-title {
+  font-size: 0.78rem;
   font-weight: 600;
   color: var(--text-dark);
-  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
-.tag-chips-container {
+.tag-chips-grid {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+  max-height: 220px;
+  overflow-y: auto;
+  padding: 4px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: var(--bg-dark);
 }
 
 .modal-tag-chip {
@@ -61,7 +112,7 @@
   transition: all var(--transition-fast);
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 5px;
 }
 
 .modal-tag-chip:hover {
@@ -70,10 +121,17 @@
   border-color: var(--accent-primary);
 }
 
-.modal-tag-chip.active {
+.modal-tag-chip.selected {
   background: linear-gradient(135deg, #6366f1 0%, #06b6d4 100%);
   color: #ffffff;
   border-color: transparent;
   box-shadow: var(--shadow-glow);
   font-weight: 600;
+}
+
+.tag-count-badge {
+  background: rgba(0, 0, 0, 0.3);
+  padding: 1px 5px;
+  border-radius: 8px;
+  font-size: 0.68rem;
 }

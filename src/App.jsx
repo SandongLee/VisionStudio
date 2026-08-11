@@ -21,6 +21,7 @@ import FileProperties from './components/FileProperties'
 import MapView from './components/MapView'
 import TagSearchModal from './components/TagSearchModal'
 import { openDirectoryPicker, scanDirectoryHandle, collectAllMediaFiles } from './utils/fileSystem'
+import { buildFolderTagIndex } from './utils/tagIndexer'
 import './App.css'
 
 export default function App() {
@@ -31,22 +32,25 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
 
-  // Requirement 1: Automatic subfolder media file inclusion toggle (default: true)
+  // Subfolder inclusion toggle
   const [includeSubfolders, setIncludeSubfolders] = useState(true)
 
-  // Requirement 3: Tag Search Query
-  const [activeTagQuery, setActiveTagQuery] = useState('')
+  // Multi-Tag Selection & Folder Tag Indexing
+  const [selectedTags, setSelectedTags] = useState([])
+  const [tagMatchMode, setTagMatchMode] = useState('OR') // 'OR' | 'AND'
+  const [availableTags, setAvailableTags] = useState([]) // Array<{ tag, count }>
+  const [fileTagMap, setFileTagMap] = useState(new Map())
   const [showTagSearchModal, setShowTagSearchModal] = useState(false)
 
-  // View mode state (Normal Viewer vs Google Maps View)
+  // View mode
   const [isMapView, setIsMapView] = useState(false)
 
-  // Visibility States for Panels
+  // Panel visibility
   const [showSidebar, setShowSidebar] = useState(true)
   const [showThumbnails, setShowThumbnails] = useState(true)
   const [showProperties, setShowProperties] = useState(true)
 
-  // Resizable Panel dimensions
+  // Resizable dimensions
   const [sidebarWidth, setSidebarWidth] = useState(260)
   const [thumbnailHeight, setThumbnailHeight] = useState(220)
   const [propertiesWidth, setPropertiesWidth] = useState(280)
@@ -57,18 +61,33 @@ export default function App() {
 
   const viewerContainerRef = useRef(null)
 
-  // Calculate active media files list (Recursively including subfolders if enabled)
+  // Calculate active media files list
   const activeMediaFiles = activeFolder ? collectAllMediaFiles(activeFolder, includeSubfolders) : []
 
-  // Auto select first file when active folder changes if no file is selected
+  // Auto select first file & Scan/Index Folder Tags
   useEffect(() => {
+    let isMounted = true
+
     if (activeMediaFiles && activeMediaFiles.length > 0) {
-      // Keep selected file if still in active list, otherwise set to first file
       if (!selectedFile || !activeMediaFiles.some((f) => f.id === selectedFile.id)) {
         setSelectedFile(activeMediaFiles[0])
       }
+
+      // Build tag index for active folder media files
+      buildFolderTagIndex(activeMediaFiles).then(({ fileTagMap: fMap, availableTags: aTags }) => {
+        if (isMounted) {
+          setFileTagMap(fMap)
+          setAvailableTags(aTags)
+        }
+      })
     } else {
       setSelectedFile(null)
+      setFileTagMap(new Map())
+      setAvailableTags([])
+    }
+
+    return () => {
+      isMounted = false
     }
   }, [activeFolder, includeSubfolders])
 
@@ -91,7 +110,7 @@ export default function App() {
     }
   }
 
-  // Mouse Drag Resizing handlers
+  // Mouse Drag Resizing
   useEffect(() => {
     const handleMouseMove = (e) => {
       if (isDraggingSidebar.current) {
@@ -122,7 +141,7 @@ export default function App() {
     }
   }, [])
 
-  // Keyboard Shortcuts Navigation & Ctrl+T Tag Search
+  // Keyboard Shortcuts
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) return
@@ -155,7 +174,7 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [activeMediaFiles, selectedFile])
 
-  // Toggle Fullscreen View
+  // Fullscreen
   const toggleFullscreen = () => {
     if (!viewerContainerRef.current) return
     if (!document.fullscreenElement) {
@@ -174,7 +193,20 @@ export default function App() {
     }
   }
 
-  // Previous / Next file navigation
+  // Multi-Tag Handlers
+  const handleApplyTags = (tags, mode) => {
+    setSelectedTags(tags)
+    setTagMatchMode(mode)
+  }
+
+  const handleRemoveSingleTag = (tagToRemove) => {
+    setSelectedTags(selectedTags.filter((t) => t !== tagToRemove))
+  }
+
+  const handleToggleMatchMode = () => {
+    setTagMatchMode(tagMatchMode === 'OR' ? 'AND' : 'OR')
+  }
+
   const currentFileIndex = activeMediaFiles.findIndex((f) => selectedFile && f.id === selectedFile.id)
   const hasPrev = currentFileIndex > 0
   const hasNext = currentFileIndex >= 0 && currentFileIndex < activeMediaFiles.length - 1
@@ -261,8 +293,13 @@ export default function App() {
                   onToggleMapView={() => setIsMapView(!isMapView)}
                   includeSubfolders={includeSubfolders}
                   onToggleIncludeSubfolders={() => setIncludeSubfolders(!includeSubfolders)}
-                  activeTagQuery={activeTagQuery}
-                  onClearTagQuery={() => setActiveTagQuery('')}
+                  selectedTags={selectedTags}
+                  tagMatchMode={tagMatchMode}
+                  fileTagMap={fileTagMap}
+                  onRemoveTag={handleRemoveSingleTag}
+                  onClearAllTags={() => setSelectedTags([])}
+                  onToggleMatchMode={handleToggleMatchMode}
+                  onOpenTagModal={() => setShowTagSearchModal(true)}
                 />
               </section>
               <div 
@@ -287,7 +324,7 @@ export default function App() {
                 />
               ) : selectedFile ? (
                 <div style={{ width: '100%', height: '100%', position: 'relative' }}>
-                  {/* Top Overlay Controls (File Name & Navigation) */}
+                  {/* Top Overlay Controls */}
                   <div style={{
                     position: 'absolute',
                     top: '16px',
@@ -346,7 +383,7 @@ export default function App() {
                     </button>
                   </div>
 
-                  {/* Render Viewer based on Media Type */}
+                  {/* Render Viewer */}
                   {selectedFile.mediaType === 'image' ? (
                     <ImageViewer fileEntry={selectedFile} fileMetadata={fileMetadata} />
                   ) : (
@@ -391,11 +428,13 @@ export default function App() {
         </main>
       </div>
 
-      {/* Requirement 3: Tag Search Modal */}
+      {/* Multi-Tag Search Modal */}
       {showTagSearchModal && (
         <TagSearchModal 
-          activeTagQuery={activeTagQuery}
-          onApplyTagQuery={(tag) => setActiveTagQuery(tag)}
+          availableTags={availableTags}
+          selectedTags={selectedTags}
+          tagMatchMode={tagMatchMode}
+          onApplyTags={handleApplyTags}
           onClose={() => setShowTagSearchModal(false)}
         />
       )}
