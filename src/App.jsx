@@ -19,7 +19,8 @@ import ImageViewer from './components/ImageViewer'
 import VideoViewer from './components/VideoViewer'
 import FileProperties from './components/FileProperties'
 import MapView from './components/MapView'
-import { openDirectoryPicker, scanDirectoryHandle } from './utils/fileSystem'
+import TagSearchModal from './components/TagSearchModal'
+import { openDirectoryPicker, scanDirectoryHandle, collectAllMediaFiles } from './utils/fileSystem'
 import './App.css'
 
 export default function App() {
@@ -29,6 +30,13 @@ export default function App() {
   const [fileMetadata, setFileMetadata] = useState(null)
   const [isLoading, setIsLoading] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
+
+  // Requirement 1: Automatic subfolder media file inclusion toggle (default: true)
+  const [includeSubfolders, setIncludeSubfolders] = useState(true)
+
+  // Requirement 3: Tag Search Query
+  const [activeTagQuery, setActiveTagQuery] = useState('')
+  const [showTagSearchModal, setShowTagSearchModal] = useState(false)
 
   // View mode state (Normal Viewer vs Google Maps View)
   const [isMapView, setIsMapView] = useState(false)
@@ -49,17 +57,20 @@ export default function App() {
 
   const viewerContainerRef = useRef(null)
 
-  // Active folder's media files list
-  const activeMediaFiles = activeFolder ? activeFolder.mediaFiles || [] : []
+  // Calculate active media files list (Recursively including subfolders if enabled)
+  const activeMediaFiles = activeFolder ? collectAllMediaFiles(activeFolder, includeSubfolders) : []
 
   // Auto select first file when active folder changes if no file is selected
   useEffect(() => {
-    if (activeFolder && activeFolder.mediaFiles && activeFolder.mediaFiles.length > 0) {
-      setSelectedFile(activeFolder.mediaFiles[0])
+    if (activeMediaFiles && activeMediaFiles.length > 0) {
+      // Keep selected file if still in active list, otherwise set to first file
+      if (!selectedFile || !activeMediaFiles.some((f) => f.id === selectedFile.id)) {
+        setSelectedFile(activeMediaFiles[0])
+      }
     } else {
       setSelectedFile(null)
     }
-  }, [activeFolder])
+  }, [activeFolder, includeSubfolders])
 
   // Open Folder Action
   const handleOpenFolder = async () => {
@@ -87,7 +98,6 @@ export default function App() {
         setSidebarWidth(Math.min(Math.max(e.clientX, 160), 480))
       }
       if (isDraggingThumbnails.current) {
-        // Offset by MenuBar (36px) + Header (52px) = 88px
         const newH = e.clientY - 88
         setThumbnailHeight(Math.min(Math.max(newH, 100), 450))
       }
@@ -112,10 +122,17 @@ export default function App() {
     }
   }, [])
 
-  // Keyboard Shortcuts Navigation
+  // Keyboard Shortcuts Navigation & Ctrl+T Tag Search
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) return
+
+      if (e.ctrlKey && (e.key === 't' || e.key === 'T')) {
+        e.preventDefault()
+        setShowTagSearchModal(true)
+        return
+      }
+
       if (!activeMediaFiles || activeMediaFiles.length === 0) return
 
       const currentIndex = activeMediaFiles.findIndex((f) => selectedFile && f.id === selectedFile.id)
@@ -152,7 +169,6 @@ export default function App() {
   const handleSelectFile = (file, metadata) => {
     setSelectedFile(file)
     setFileMetadata(metadata)
-    // If selecting file while in map view, return to media viewer
     if (isMapView) {
       setIsMapView(false)
     }
@@ -183,6 +199,7 @@ export default function App() {
         onToggleProperties={() => setShowProperties(!showProperties)}
         showProperties={showProperties}
         onToggleFullscreen={toggleFullscreen}
+        onOpenTagSearch={() => setShowTagSearchModal(true)}
       />
 
       {/* Top Header */}
@@ -198,7 +215,7 @@ export default function App() {
         <div className="header-info">
           {activeFolder ? (
             <div className="current-path" title={activeFolder.path}>
-              📁 {activeFolder.path} ({activeMediaFiles.length} 항목)
+              📁 {activeFolder.path} ({activeMediaFiles.length} 항목 {includeSubfolders ? '[하위폴더 포함]' : ''})
             </div>
           ) : (
             <span style={{ color: 'var(--text-dark)', fontSize: '0.85rem' }}>
@@ -242,6 +259,10 @@ export default function App() {
                   onSelectFile={handleSelectFile}
                   isMapView={isMapView}
                   onToggleMapView={() => setIsMapView(!isMapView)}
+                  includeSubfolders={includeSubfolders}
+                  onToggleIncludeSubfolders={() => setIncludeSubfolders(!includeSubfolders)}
+                  activeTagQuery={activeTagQuery}
+                  onClearTagQuery={() => setActiveTagQuery('')}
                 />
               </section>
               <div 
@@ -369,6 +390,15 @@ export default function App() {
           </div>
         </main>
       </div>
+
+      {/* Requirement 3: Tag Search Modal */}
+      {showTagSearchModal && (
+        <TagSearchModal 
+          activeTagQuery={activeTagQuery}
+          onApplyTagQuery={(tag) => setActiveTagQuery(tag)}
+          onClose={() => setShowTagSearchModal(false)}
+        />
+      )}
     </div>
   )
 }

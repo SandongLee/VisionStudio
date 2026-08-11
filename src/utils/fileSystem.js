@@ -41,7 +41,7 @@ export async function openDirectoryPicker() {
 /**
  * Recursively read directory tree from FileSystemDirectoryHandle
  */
-export async function scanDirectoryHandle(dirHandle, parentPath = '') {
+export async function scanDirectoryHandle(dirHandle, parentPath = '', onProgress = null) {
   const path = parentPath ? `${parentPath}/${dirHandle.name}` : dirHandle.name
   
   const node = {
@@ -58,10 +58,9 @@ export async function scanDirectoryHandle(dirHandle, parentPath = '') {
   try {
     for await (const entry of dirHandle.values()) {
       if (entry.kind === 'directory') {
-        // Skip hidden folders like .git, node_modules
         if (entry.name.startsWith('.') || entry.name === 'node_modules') continue
         
-        const subDirNode = await scanDirectoryHandle(entry, path)
+        const subDirNode = await scanDirectoryHandle(entry, path, onProgress)
         node.children.push(subDirNode)
         node.mediaCount += subDirNode.mediaCount
       } else if (entry.kind === 'file') {
@@ -78,13 +77,12 @@ export async function scanDirectoryHandle(dirHandle, parentPath = '') {
           }
           node.mediaFiles.push(fileObj)
           node.mediaCount += 1
+          if (onProgress) onProgress(fileObj)
         }
       }
     }
 
-    // Sort children folders alphabetically
     node.children.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }))
-    // Sort media files alphabetically
     node.mediaFiles.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }))
 
   } catch (err) {
@@ -92,6 +90,26 @@ export async function scanDirectoryHandle(dirHandle, parentPath = '') {
   }
 
   return node
+}
+
+/**
+ * Collect all media files in a folder and all its subfolders recursively
+ */
+export function collectAllMediaFiles(node, includeSubfolders = true) {
+  if (!node) return []
+  if (!includeSubfolders) return node.mediaFiles || []
+
+  let allFiles = [...(node.mediaFiles || [])]
+
+  if (node.children && node.children.length > 0) {
+    for (const childNode of node.children) {
+      allFiles = allFiles.concat(collectAllMediaFiles(childNode, true))
+    }
+  }
+
+  const map = new Map()
+  allFiles.forEach((file) => map.set(file.id, file))
+  return Array.from(map.values())
 }
 
 /**
@@ -110,7 +128,7 @@ export async function getFileFromEntry(entry) {
 /**
  * Parse HTML5 input webkitdirectory file list into tree structure
  */
-export function buildTreeFromWebkitFileList(fileList) {
+export function buildTreeFromWebkitFileList(fileList, onProgress = null) {
   if (!fileList || fileList.length === 0) return null
 
   const rootName = fileList[0].webkitRelativePath.split('/')[0] || 'Selected Folder'
@@ -170,8 +188,8 @@ export function buildTreeFromWebkitFileList(fileList) {
         parentPath: currentPath || rootName
       }
       parentDir.mediaFiles.push(fileEntry)
+      if (onProgress) onProgress(fileEntry)
 
-      // Increment counts up the tree
       let pathSegments = (currentPath || rootName).split('/')
       let cumulativePath = ''
       for (const seg of pathSegments) {

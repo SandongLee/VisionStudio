@@ -82,6 +82,27 @@
 
 ---
 
+## 📌 Phase 11: 하위 폴더 자동 통합 조회 (Automatic Subfolder Media Inclusion)
+- [x] **Step 11.1**: `fileSystem.js`에 폴더 선택 시 하위 폴더의 모든 미디어 파일들을 재귀적으로 모으는 `collectAllMediaFiles(node)` 함수 구현
+- [x] **Step 11.2**: Explorer 및 App 전역 상태에서 상위 폴더 선택 시 하위 폴더 미디어 포함 토글 옵션 및 자동 통합 선택 처리
+- [x] **Git Commit**: `feat: add recursive subfolder media file inclusion for selected folders`
+
+---
+
+## 📌 Phase 12: 대용량 파일 점진적 스트리밍 렌더링 (Progressive / Chunked Loading for Fast UI)
+- [x] **Step 12.1**: `ThumbnailGrid.jsx` 및 `thumbnailGenerator.js`에 Chunked Batch rendering 및 IntersectionObserver 기반 Lazy Loading 적용
+- [x] **Step 12.2**: 탐색 스캔 중 발견된 로딩 완료 파일부터 썸네일 그리드에 즉시 실시간 노출 (Progressive Streaming Display)
+- [x] **Git Commit**: `feat: implement progressive streaming thumbnail loading for large file sets`
+
+---
+
+## 📌 Phase 13: '도구' 메뉴 '태그 검색' 기능 & 선택 폴더 내 태그 필터링/정렬 (Search & Filter by Tags)
+- [x] **Step 13.1**: `MenuBar.jsx` '도구 (Tools)' 메뉴에 `🏷️ 태그 검색 (Search Tags)` 항목 및 태그 검색 전역 대화상자 추가 (`TagSearchModal.jsx`)
+- [x] **Step 13.2**: 선택한 태그(사용자 태그, EXIF XPKeywords, 자동 시스템 태그)를 기준으로 선택 폴더 내 미디어 파일 필터링 & 우선 정렬(Sorting) 구현
+- [x] **Git Commit**: `feat: implement tag search and filter in tools menu`
+
+---
+
 ## 📌 Future Enhancements (향후 기능 확장 가능 목록)
 - [ ] 슬라이드쇼 (Slideshow) 자동 넘김 모드
 - [ ] 태그 지정 및 즐겨찾기 (Bookmarking / Tagging) 기능 (IndexedDB 연동)
