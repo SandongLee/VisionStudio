@@ -1,4 +1,5 @@
-// thumbnailGenerator.js - Asynchronous Media Thumbnail Generator & ObjectURL Caching System
+// thumbnailGenerator.js - Asynchronous Media Thumbnail Generator with Worker Pool & Caching
+import { workerPool } from './workerPool'
 
 const thumbnailCache = new Map()
 
@@ -34,7 +35,6 @@ export function generateVideoThumbnail(file, targetTime = 1.0) {
     }
 
     video.onloadedmetadata = () => {
-      // Seek to target time (or half duration if video is shorter)
       const seekTime = Math.min(targetTime, video.duration > 0 ? video.duration / 2 : 0)
       video.currentTime = seekTime
     }
@@ -78,7 +78,7 @@ export function generateVideoThumbnail(file, targetTime = 1.0) {
 }
 
 /**
- * Cached Thumbnail Resolver
+ * Cached Thumbnail Resolver with Web Worker Off-Main-Thread Processing
  */
 export async function getMediaThumbnail(fileEntry, getFileFn) {
   if (thumbnailCache.has(fileEntry.id)) {
@@ -90,45 +90,54 @@ export async function getMediaThumbnail(fileEntry, getFileFn) {
     if (!file) return { thumbnailUrl: null }
 
     if (fileEntry.mediaType === 'image') {
+      // 1. Offload image decoding to Web Worker pool
+      try {
+        const workerResult = await workerPool.executeTask('GENERATE_THUMBNAIL', file)
+        if (workerResult && workerResult.blob) {
+          const thumbUrl = URL.createObjectURL(workerResult.blob)
+          const result = { thumbnailUrl: thumbUrl, size: file.size, lastModified: file.lastModified }
+          thumbnailCache.set(fileEntry.id, result)
+          return result
+        }
+      } catch (wErr) {
+        console.warn('Worker thumbnail generation fallback to direct ObjectURL:', wErr)
+      }
+
+      // Fallback: direct ObjectURL
       const imgUrl = URL.createObjectURL(file)
       const result = { thumbnailUrl: imgUrl, size: file.size, lastModified: file.lastModified }
       thumbnailCache.set(fileEntry.id, result)
       return result
+
     } else if (fileEntry.mediaType === 'video') {
       const videoResult = await generateVideoThumbnail(file, 1.0)
       const result = { 
         thumbnailUrl: videoResult.thumbnailUrl, 
+        size: file.size, 
+        lastModified: file.lastModified,
         duration: videoResult.duration,
         videoWidth: videoResult.videoWidth,
-        videoHeight: videoResult.videoHeight,
-        size: file.size,
-        lastModified: file.lastModified
+        videoHeight: videoResult.videoHeight
       }
       thumbnailCache.set(fileEntry.id, result)
       return result
     }
   } catch (err) {
-    console.error('Failed to generate thumbnail for:', fileEntry.name, err)
+    console.warn(`Failed to resolve thumbnail for ${fileEntry.name}:`, err)
   }
 
   return { thumbnailUrl: null }
 }
 
-/**
- * Format bytes to readable size
- */
 export function formatBytes(bytes, decimals = 1) {
-  if (!bytes || bytes === 0) return '0 B'
+  if (!bytes || bytes === 0) return '0 Bytes'
   const k = 1024
   const dm = decimals < 0 ? 0 : decimals
-  const sizes = ['B', 'KB', 'MB', 'GB', 'TB']
+  const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB']
   const i = Math.floor(Math.log(bytes) / Math.log(k))
   return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i]
 }
 
-/**
- * Format seconds to MM:SS
- */
 export function formatDuration(seconds) {
   if (!seconds || isNaN(seconds)) return '00:00'
   const mins = Math.floor(seconds / 60)

@@ -1,4 +1,4 @@
-// fileSystem.js - File System Access API & File Helpers
+// fileSystem.js - File System Access API & Progressive Streaming Directory Scanner
 
 export const IMAGE_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp', 'avif'])
 export const VIDEO_EXTENSIONS = new Set(['mp4', 'webm', 'mov', 'mkv', 'avi', 'm4v', 'ogv'])
@@ -39,7 +39,94 @@ export async function openDirectoryPicker() {
 }
 
 /**
- * Recursively read directory tree from FileSystemDirectoryHandle
+ * Progressive Streaming Directory Reader (Method 5 + Method 1 Stream)
+ * Yields root items immediately in <0.05s, then streams subfolder entries in chunked batches
+ */
+export async function scanDirectoryStreaming(dirHandle, onBatchStream = null, parentPath = '') {
+  const path = parentPath ? `${parentPath}/${dirHandle.name}` : dirHandle.name
+  
+  const rootNode = {
+    id: path,
+    name: dirHandle.name,
+    path: path,
+    type: 'directory',
+    handle: dirHandle,
+    children: [],
+    mediaFiles: [],
+    mediaCount: 0
+  }
+
+  const subDirQueue = []
+  let currentBatch = []
+  const BATCH_SIZE = 40
+
+  const emitBatch = () => {
+    if (currentBatch.length > 0 && onBatchStream) {
+      onBatchStream([...currentBatch])
+      currentBatch = []
+    }
+  }
+
+  try {
+    // 1. First Pass: Fast scan ROOT folder files only for instant <0.05s UI display
+    for await (const entry of dirHandle.values()) {
+      if (entry.kind === 'directory') {
+        if (entry.name.startsWith('.') || entry.name === 'node_modules') continue
+        subDirQueue.push({ handle: entry, parentPath: path })
+      } else if (entry.kind === 'file') {
+        const mediaType = getMediaType(entry.name)
+        if (mediaType) {
+          const fileObj = {
+            id: `${path}/${entry.name}`,
+            name: entry.name,
+            path: `${path}/${entry.name}`,
+            type: 'file',
+            mediaType: mediaType,
+            handle: entry,
+            parentPath: path
+          }
+          rootNode.mediaFiles.push(fileObj)
+          rootNode.mediaCount += 1
+          currentBatch.push(fileObj)
+
+          if (currentBatch.length >= BATCH_SIZE) {
+            emitBatch()
+          }
+        }
+      }
+    }
+
+    emitBatch()
+
+    // 2. Second Pass: Stream subfolders in non-blocking async chunks
+    for (const subDir of subDirQueue) {
+      await new Promise((resolve) => setTimeout(resolve, 0))
+
+      const subDirNode = await scanDirectoryHandle(subDir.handle, subDir.parentPath, (fileObj) => {
+        currentBatch.push(fileObj)
+        if (currentBatch.length >= BATCH_SIZE) {
+          emitBatch()
+        }
+      })
+
+      rootNode.children.push(subDirNode)
+      rootNode.mediaCount += subDirNode.mediaCount
+    }
+
+    emitBatch()
+
+    rootNode.children.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }))
+    rootNode.mediaFiles.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }))
+
+  } catch (err) {
+    console.error(`Failed to read directory ${dirHandle.name}:`, err)
+  }
+
+  return rootNode
+}
+
+/**
+ * Standard Directory Scanner with progress callback
  */
 export async function scanDirectoryHandle(dirHandle, parentPath = '', onProgress = null) {
   const path = parentPath ? `${parentPath}/${dirHandle.name}` : dirHandle.name

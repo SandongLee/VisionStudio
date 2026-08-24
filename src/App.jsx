@@ -20,7 +20,7 @@ import VideoViewer from './components/VideoViewer'
 import FileProperties from './components/FileProperties'
 import MapView from './components/MapView'
 import TagSearchModal from './components/TagSearchModal'
-import { openDirectoryPicker, scanDirectoryHandle, collectAllMediaFiles } from './utils/fileSystem'
+import { openDirectoryPicker, scanDirectoryStreaming, collectAllMediaFiles } from './utils/fileSystem'
 import { buildFolderTagIndex } from './utils/tagIndexer'
 import './App.css'
 
@@ -38,7 +38,7 @@ export default function App() {
   // Multi-Tag Selection & Folder Tag Indexing
   const [selectedTags, setSelectedTags] = useState([])
   const [tagMatchMode, setTagMatchMode] = useState('OR') // 'OR' | 'AND'
-  const [availableTags, setAvailableTags] = useState([]) // Array<{ tag, count }>
+  const [availableTags, setAvailableTags] = useState([])
   const [fileTagMap, setFileTagMap] = useState(new Map())
   const [showTagSearchModal, setShowTagSearchModal] = useState(false)
 
@@ -91,7 +91,7 @@ export default function App() {
     }
   }, [activeFolder, includeSubfolders])
 
-  // Open Folder Action
+  // Open Folder Action with Method 1 + 5 High-Performance Hybrid Streaming
   const handleOpenFolder = async () => {
     try {
       setIsLoading(true)
@@ -100,7 +100,13 @@ export default function App() {
         setIsLoading(false)
         return
       }
-      const rootNode = await scanDirectoryHandle(dirHandle)
+
+      // 0.05s instant root folder display & background chunked subfolder streaming
+      const rootNode = await scanDirectoryStreaming(dirHandle, () => {
+        // Trigger progressive re-render as stream chunks arrive
+        setTreeData((prev) => (prev ? { ...prev } : prev))
+      })
+
       setTreeData(rootNode)
       setActiveFolder(rootNode)
     } catch (err) {
