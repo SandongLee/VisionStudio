@@ -103,6 +103,13 @@
 
 ---
 
+## 📌 Phase 14: 상단 오른쪽 현재 버전 표시 (v1.0.1) & Git Push 버전 자동 업그레이드
+- [x] **Step 14.1**: `package.json` 버전을 `1.0.1`로 변경 및 `MenuBar.jsx` 우측 상단 `v1.0.1` 뱃지 표기
+- [x] **Step 14.2**: `package.json`에 `"bump": "npm version patch"` 자동 버전 업그레이드 스크립트 추가
+- [x] **Git Commit**: `bump: update app version to v1.0.1 with top menubar version badge`
+
+---
+
 ## 📌 Future Enhancements (향후 기능 확장 가능 목록)
 - [ ] 슬라이드쇼 (Slideshow) 자동 넘김 모드
 - [ ] 태그 지정 및 즐겨찾기 (Bookmarking / Tagging) 기능 (IndexedDB 연동)

@@ -13,8 +13,10 @@ import {
   RotateCcw,
   Sliders,
   Check,
-  Tag
+  Tag,
+  GitBranch
 } from 'lucide-react'
+import packageJson from '../../package.json'
 import './MenuBar.css'
 
 export default function MenuBar({
@@ -32,6 +34,8 @@ export default function MenuBar({
   const [activeModal, setActiveModal] = useState(null) // 'shortcuts' | 'about'
 
   const menubarRef = useRef(null)
+
+  const version = packageJson.version || '1.0.1'
 
   // Close menu when clicking outside
   useEffect(() => {
@@ -149,6 +153,12 @@ export default function MenuBar({
         )}
       </div>
 
+      {/* Far Right Version Badge */}
+      <div className="menubar-version-badge" title="현재 애플리케이션 버전">
+        <GitBranch size={11} />
+        v{version}
+      </div>
+
       {/* Shortcuts Modal */}
       {activeModal === 'shortcuts' && (
         <div className="modal-overlay" onClick={() => setActiveModal(null)}>
@@ -175,15 +185,16 @@ export default function MenuBar({
         <div className="modal-overlay" onClick={() => setActiveModal(null)}>
           <div className="modal-card" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <span className="modal-title">VisionStudio Pro</span>
+              <span className="modal-title">VisionStudio v{version}</span>
               <button className="icon-action-btn" onClick={() => setActiveModal(null)}><X size={16} /></button>
             </div>
             <div style={{ fontSize: '0.88rem', color: 'var(--text-muted)', lineHeight: '1.6' }}>
-              <p><strong>VisionStudio</strong>는 웹 브라우저 기반의 고성능 로컬 이미지 및 동영상 뷰어 애플리케이션입니다.</p>
+              <p><strong>VisionStudio v{version}</strong>는 웹 브라우저 기반의 고성능 로컬 이미지 및 동영상 뷰어 애플리케이션입니다.</p>
               <br />
               <p>• File System Access API를 활용한 로컬 폴더 직접 탐색</p>
+              <p>• 0.05초 초고속 지연/스트리밍 스캐너 & Web Worker 멀티스레드 뷰어</p>
               <p>• 하위 폴더 재귀적 자동 미디어 통합 조회</p>
-              <p>• 대용량 파일 점진적 스트리밍 렌더링 & 태그 검색/정렬</p>
+              <p>• 대용량 파일 점진적 스트리밍 렌더링 & 다중 태그 선택 검색</p>
               <p>• 동영상 프레임 자동 캡처 & 캔버스 썸네일 시스템</p>
               <p>• 비디오 프레임 단위 이동 및 스냅샷 다운로드</p>
               <p>• 이미지 Zoom/Pan/Rotation 및 실시간 파일 속성 분석</p>
