@@ -5,6 +5,14 @@
 
 ---
 
+## 📌 배포 전 필수 교차 검증 프로세스 (Mandatory Pre-Deployment Verification Rule)
+> ⚠️ **선언**: 앞으로 모든 기능 추가, 버그 수정 및 개선 작업 후 `git push` 배포를 진행하기 전에 아래 **3단계 교차 검증(Cross-Module Verification)**을 반드시 통과해야 배포할 수 있습니다.
+> 1. **영향 모듈 교차 분석 (Cross-Module Analysis)**: 수정 대상 모듈과 연결된 다른 모든 컴포넌트(예: 속성 패널 ↔ 지도 뷰어 ↔ 썸네일 그리드)의 영향 범위를 전수 점검.
+> 2. **런타임 데이터 검증 (Runtime Data Check)**: 실제 바이너리/데이터 디코딩 결과를 콘솔 및 브라우저에서 직접 검증.
+> 3. **빌드 & 버저닝 검증 (Build & Bump Version Check)**: `npm run build` 오류 0개 및 버전 1단계 증가(`npm run bump`) 확인.
+
+---
+
 ## 📌 Phase 1: 프로젝트 기초 구성 & 디자인 시스템 (Project Setup & Design System)
 - [x] **Step 1.1**: Vite + React 기반 프로젝트 초기화 및 `package.json` 세팅 (`lucide-react` 등 dependencies 설치)
 - [x] **Step 1.2**: Vanilla CSS 기반 프리미엄 다크 테마 및 Layout CSS 변수, CSS Reset 구축 (`src/styles/global.css`)
@@ -107,6 +115,13 @@
 - [x] **Step 14.1**: `package.json` 버전을 `1.0.1`로 변경 및 `MenuBar.jsx` 우측 상단 `v1.0.1` 뱃지 표기
 - [x] **Step 14.2**: `package.json`에 `"bump": "npm version patch"` 자동 버전 업그레이드 스크립트 추가
 - [x] **Git Commit**: `bump: update app version to v1.0.1 with top menubar version badge`
+
+---
+
+## 📌 Phase 15: 동영상(MP4/MOV) GPS 교차 파싱 및 지도 뷰어 썸네일 마커 연동 (v1.0.3)
+- [x] **Step 15.1**: `MapView.jsx` GPS 스캔 루프에서 이미지 및 동영상(`mediaType === 'video'`) 교차 파싱 지원
+- [x] **Step 15.2**: `exifParser.js` 및 `FileProperties.jsx` 동영상 QuickTime ISO-6709 위치 아톰 파싱 강화
+- [x] **Git Commit**: `fix: enable cross-module Video GPS parsing for MapView and FileProperties panel`
 
 ---
 
