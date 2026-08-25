@@ -1,4 +1,4 @@
-// exifParser.js - EXIF Metadata & Windows Explorer Properties Auto-Decoder
+// exifParser.js - EXIF Metadata & Video (MP4/MOV QuickTime) Location Decoder
 import exifr from 'exifr'
 
 /**
@@ -21,13 +21,29 @@ export function calculateAspectRatio(width, height) {
 }
 
 /**
- * Repair Mojibake UTF-8 bytes stored as Latin-1 string in IPTC (e.g. Samsung/Android Gallery IPTC Keywords)
+ * Parse ISO 6709 location string (common in MP4 / QuickTime videos)
+ * e.g. "+37.8117+128.8988/" or "+37.8117+128.8988+038.000/"
+ */
+function parseIso6709Location(str) {
+  if (!str || typeof str !== 'string') return null
+  const match = str.match(/([+-]\d+\.?\d*)\s*([+-]\d+\.?\d*)/)
+  if (match) {
+    const lat = parseFloat(match[1])
+    const lon = parseFloat(match[2])
+    if (!isNaN(lat) && !isNaN(lon) && Math.abs(lat) <= 90 && Math.abs(lon) <= 180) {
+      return { latitude: lat, longitude: lon }
+    }
+  }
+  return null
+}
+
+/**
+ * Repair Mojibake UTF-8 bytes stored as Latin-1 string in IPTC
  */
 function fixLatin1Utf8Mojibake(str) {
   if (typeof str !== 'string') return str
   const cleaned = str.replace(/\0/g, '').trim()
   
-  // 1. Try converting charCode byte sequence to UTF-8 TextDecoder
   try {
     const bytes = new Uint8Array(cleaned.length)
     for (let i = 0; i < cleaned.length; i++) {
@@ -39,7 +55,6 @@ function fixLatin1Utf8Mojibake(str) {
     }
   } catch (e) {}
 
-  // 2. Try URI escape decoding
   try {
     const decodedUri = decodeURIComponent(escape(cleaned))
     if (/[가-힣]/.test(decodedUri)) {
@@ -170,15 +185,28 @@ export async function parseFileExif(file) {
       flash: rawData.Flash ? String(rawData.Flash) : null
     }
 
-    // 4. GPS Info
+    // 4. GPS Location Extraction (Images & Videos)
+    let lat = rawData.latitude || null
+    let lon = rawData.longitude || null
+
+    // If video QuickTime ISO 6709 location string (e.g. "+37.8117+128.8988/")
+    if (!lat || !lon) {
+      const locStr = rawData.location || rawData['com.apple.quicktime.location.ISO6709'] || rawData.xyz || rawData.GPSPosition
+      const parsedIso = parseIso6709Location(locStr)
+      if (parsedIso) {
+        lat = parsedIso.latitude
+        lon = parsedIso.longitude
+      }
+    }
+
     const gps = {
-      latitude: rawData.latitude || null,
-      longitude: rawData.longitude || null,
+      latitude: lat,
+      longitude: lon,
       altitude: rawData.altitude ? `${Math.round(rawData.altitude)}m` : null
     }
 
-    // 5. Creation Date (DateTimeOriginal / CreateDate)
-    const rawCreated = rawData.DateTimeOriginal || rawData.CreateDate || rawData.ModifyDate || null
+    // 5. Creation Date (DateTimeOriginal / CreateDate / CreationDate)
+    const rawCreated = rawData.DateTimeOriginal || rawData.CreateDate || rawData.CreationDate || rawData.ModifyDate || null
     const createdDate = rawCreated ? new Date(rawCreated).toLocaleString() : null
 
     // 6. Image Specs
@@ -199,7 +227,7 @@ export async function parseFileExif(file) {
       rawData 
     }
   } catch (err) {
-    console.warn('EXIF/Windows Metadata parsing skipped or unsupported file format:', err)
+    console.warn('EXIF/Video Metadata parsing skipped or unsupported file format:', err)
     return null
   }
 }

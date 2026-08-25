@@ -67,14 +67,15 @@ export default function FileProperties({ fileEntry, fileMetadata, onClose }) {
         }
       }
 
-      // 2. Load file & EXIF/Windows Metadata
+      // 2. Load file & EXIF/Windows/Video Metadata
       getFileFromEntry(fileEntry).then(async (f) => {
         if (isMounted && f) {
           setFileObj(f)
           createdUrl = URL.createObjectURL(f)
           setObjectUrl(createdUrl)
 
-          if (fileEntry.mediaType === 'image') {
+          // Enable EXIF & Location parsing for both Images and Videos (MP4/MOV)
+          if (fileEntry.mediaType === 'image' || fileEntry.mediaType === 'video') {
             setIsParsingExif(true)
             const parsed = await parseFileExif(f)
             if (isMounted) {
@@ -282,7 +283,7 @@ export default function FileProperties({ fileEntry, fileMetadata, onClose }) {
           </div>
         </div>
 
-        {/* Windows Explorer Rating & Title (If available) */}
+        {/* Windows Explorer Rating & Title */}
         {(winTitle || (winRating && winRating > 0)) && (
           <div className="prop-section">
             <div className="prop-section-title">
@@ -352,7 +353,7 @@ export default function FileProperties({ fileEntry, fileMetadata, onClose }) {
           </div>
 
           {isParsingExif ? (
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-dark)' }}>EXIF 메타데이터 파싱 중...</span>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-dark)' }}>EXIF/메타데이터 파싱 중...</span>
           ) : hasCameraData ? (
             <div className="camera-grid">
               {camera.make && (
@@ -399,7 +400,7 @@ export default function FileProperties({ fileEntry, fileMetadata, onClose }) {
           )}
         </div>
 
-        {/* 4. GPS Location Metadata */}
+        {/* 4. GPS Location Metadata (Images & Videos) */}
         <div className="prop-section">
           <div className="prop-section-title">
             <MapPin size={13} style={{ color: 'var(--accent-rose)' }} />
