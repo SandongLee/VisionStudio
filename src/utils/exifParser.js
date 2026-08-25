@@ -1,6 +1,7 @@
 // exifParser.js - EXIF Metadata & Video (MP4/MOV QuickTime) Location Decoder
 import exifr from 'exifr'
 import { parseMp4Gps } from './mp4GpsParser'
+import { getMediaType } from './fileSystem'
 
 /**
  * Calculate greatest common divisor for aspect ratio
@@ -120,7 +121,7 @@ export async function parseFileExif(file) {
     let rawData = null
 
     // Parse image EXIF via exifr
-    if (file.type && file.type.startsWith('image/')) {
+    if (getMediaType(file.name) === 'image') {
       rawData = await exifr.parse(file, {
         tiff: true,
         exif: true,
