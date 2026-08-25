@@ -1,5 +1,6 @@
 // exifParser.js - EXIF Metadata & Video (MP4/MOV QuickTime) Location Decoder
 import exifr from 'exifr'
+import { parseMp4Gps } from './mp4GpsParser'
 
 /**
  * Calculate greatest common divisor for aspect ratio
@@ -18,23 +19,6 @@ export function calculateAspectRatio(width, height) {
   if (Math.abs(w / h - 3 / 2) < 0.05) return '3:2'
   if (Math.abs(w / h - 1 / 1) < 0.05) return '1:1'
   return `${w}:${h}`
-}
-
-/**
- * Parse ISO 6709 location string (common in MP4 / QuickTime videos)
- * e.g. "+37.8117+128.8988/" or "+37.8117+128.8988+038.000/"
- */
-function parseIso6709Location(str) {
-  if (!str || typeof str !== 'string') return null
-  const match = str.match(/([+-]\d+\.?\d*)\s*([+-]\d+\.?\d*)/)
-  if (match) {
-    const lat = parseFloat(match[1])
-    const lon = parseFloat(match[2])
-    if (!isNaN(lat) && !isNaN(lon) && Math.abs(lat) <= 90 && Math.abs(lon) <= 180) {
-      return { latitude: lat, longitude: lon }
-    }
-  }
-  return null
 }
 
 /**
@@ -133,88 +117,91 @@ export async function parseFileExif(file) {
   if (!file) return null
 
   try {
-    const rawData = await exifr.parse(file, {
-      tiff: true,
-      exif: true,
-      gps: true,
-      iptc: true,
-      xmp: true,
-      mergeOutput: true,
-      reviveValues: true
-    })
+    let rawData = null
 
-    if (!rawData) return null
-
-    // 1. Extract Tags
-    let fileMetadataTags = []
-    if (rawData.subject) {
-      if (Array.isArray(rawData.subject)) {
-        rawData.subject.forEach((s) => fileMetadataTags.push(...parseXPKeywords(s)))
-      } else {
-        fileMetadataTags.push(...parseXPKeywords(rawData.subject))
-      }
-    }
-    if (rawData.XPKeywords) {
-      fileMetadataTags.push(...parseXPKeywords(rawData.XPKeywords))
-    }
-    if (rawData.Keywords) {
-      if (Array.isArray(rawData.Keywords)) {
-        rawData.Keywords.forEach((k) => fileMetadataTags.push(...parseXPKeywords(k)))
-      } else {
-        fileMetadataTags.push(...parseXPKeywords(rawData.Keywords))
-      }
-    }
-    fileMetadataTags = Array.from(new Set(fileMetadataTags))
-
-    // 2. Title & Rating
-    const rawTitle = rawData.XPTitle || rawData.Title || rawData.Headline || null
-    const winTitle = rawTitle ? decodeSmartString(rawTitle) : null
-    const winRating = rawData.Rating || rawData.XPRating || null
-
-    // 3. Camera Info
-    const camera = {
-      make: rawData.Make ? decodeSmartString(rawData.Make) : null,
-      model: rawData.Model ? decodeSmartString(rawData.Model) : null,
-      lens: rawData.LensModel || rawData.LensInfo || null,
-      fNumber: rawData.FNumber ? `f/${rawData.FNumber}` : null,
-      exposureTime: rawData.ExposureTime ? (
-        rawData.ExposureTime < 1 ? `1/${Math.round(1 / rawData.ExposureTime)}s` : `${rawData.ExposureTime}s`
-      ) : null,
-      iso: rawData.ISO ? `ISO ${rawData.ISO}` : null,
-      focalLength: rawData.FocalLength ? `${rawData.FocalLength}mm` : null,
-      flash: rawData.Flash ? String(rawData.Flash) : null
+    // Parse image EXIF via exifr
+    if (file.type && file.type.startsWith('image/')) {
+      rawData = await exifr.parse(file, {
+        tiff: true,
+        exif: true,
+        gps: true,
+        iptc: true,
+        xmp: true,
+        mergeOutput: true,
+        reviveValues: true
+      })
     }
 
-    // 4. GPS Location Extraction (Images & Videos)
-    let lat = rawData.latitude || null
-    let lon = rawData.longitude || null
+    let lat = rawData ? rawData.latitude : null
+    let lon = rawData ? rawData.longitude : null
 
-    // If video QuickTime ISO 6709 location string (e.g. "+37.8117+128.8988/")
+    // Video or fallback: Native MP4 ISOBMFF QuickTime Atom GPS Parser
     if (!lat || !lon) {
-      const locStr = rawData.location || rawData['com.apple.quicktime.location.ISO6709'] || rawData.xyz || rawData.GPSPosition
-      const parsedIso = parseIso6709Location(locStr)
-      if (parsedIso) {
-        lat = parsedIso.latitude
-        lon = parsedIso.longitude
+      const videoGps = await parseMp4Gps(file)
+      if (videoGps) {
+        lat = videoGps.latitude
+        lon = videoGps.longitude
       }
     }
 
-    const gps = {
+    const gps = (lat && lon) ? {
       latitude: lat,
       longitude: lon,
-      altitude: rawData.altitude ? `${Math.round(rawData.altitude)}m` : null
+      altitude: (rawData && rawData.altitude) ? `${Math.round(rawData.altitude)}m` : null
+    } : null
+
+    let fileMetadataTags = []
+    let winTitle = null
+    let winRating = null
+    let camera = { make: null, model: null }
+    let createdDate = null
+
+    if (rawData) {
+      if (rawData.subject) {
+        if (Array.isArray(rawData.subject)) {
+          rawData.subject.forEach((s) => fileMetadataTags.push(...parseXPKeywords(s)))
+        } else {
+          fileMetadataTags.push(...parseXPKeywords(rawData.subject))
+        }
+      }
+      if (rawData.XPKeywords) {
+        fileMetadataTags.push(...parseXPKeywords(rawData.XPKeywords))
+      }
+      if (rawData.Keywords) {
+        if (Array.isArray(rawData.Keywords)) {
+          rawData.Keywords.forEach((k) => fileMetadataTags.push(...parseXPKeywords(k)))
+        } else {
+          fileMetadataTags.push(...parseXPKeywords(rawData.Keywords))
+        }
+      }
+      fileMetadataTags = Array.from(new Set(fileMetadataTags))
+
+      const rawTitle = rawData.XPTitle || rawData.Title || rawData.Headline || null
+      winTitle = rawTitle ? decodeSmartString(rawTitle) : null
+      winRating = rawData.Rating || rawData.XPRating || null
+
+      camera = {
+        make: rawData.Make ? decodeSmartString(rawData.Make) : null,
+        model: rawData.Model ? decodeSmartString(rawData.Model) : null,
+        lens: rawData.LensModel || rawData.LensInfo || null,
+        fNumber: rawData.FNumber ? `f/${rawData.FNumber}` : null,
+        exposureTime: rawData.ExposureTime ? (
+          rawData.ExposureTime < 1 ? `1/${Math.round(1 / rawData.ExposureTime)}s` : `${rawData.ExposureTime}s`
+        ) : null,
+        iso: rawData.ISO ? `ISO ${rawData.ISO}` : null,
+        focalLength: rawData.FocalLength ? `${rawData.FocalLength}mm` : null,
+        flash: rawData.Flash ? String(rawData.Flash) : null
+      }
+
+      const rawCreated = rawData.DateTimeOriginal || rawData.CreateDate || rawData.CreationDate || rawData.ModifyDate || null
+      createdDate = rawCreated ? new Date(rawCreated).toLocaleString() : null
     }
 
-    // 5. Creation Date (DateTimeOriginal / CreateDate / CreationDate)
-    const rawCreated = rawData.DateTimeOriginal || rawData.CreateDate || rawData.CreationDate || rawData.ModifyDate || null
-    const createdDate = rawCreated ? new Date(rawCreated).toLocaleString() : null
-
-    // 6. Image Specs
     const image = {
-      colorSpace: rawData.ColorSpace === 1 ? 'sRGB' : (rawData.ColorSpace ? String(rawData.ColorSpace) : 'sRGB'),
+      colorSpace: (rawData && rawData.ColorSpace === 1) ? 'sRGB' : 'sRGB',
       dateTimeOriginal: createdDate,
       createdDate: createdDate,
-      software: rawData.Software ? decodeSmartString(rawData.Software) : null,
+      software: (rawData && rawData.Software) ? decodeSmartString(rawData.Software) : null,
       title: winTitle,
       rating: winRating
     }
@@ -227,7 +214,7 @@ export async function parseFileExif(file) {
       rawData 
     }
   } catch (err) {
-    console.warn('EXIF/Video Metadata parsing skipped or unsupported file format:', err)
+    console.warn('EXIF/Video Metadata parsing skipped or unsupported format:', err)
     return null
   }
 }
