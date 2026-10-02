@@ -139,10 +139,11 @@ export default function MapView({
           style={{ width: '100%', height: '100%', background: '#0b0f19' }}
           scrollWheelZoom={true}
         >
-          {/* Dark Theme CartoDB Tile Layer */}
+          {/* Dark Theme Tile Layer (Esri World Dark Gray Canvas - free, no API key required) */}
           <TileLayer
-            attribution='&copy; <a href="https://carto.com/">CARTO</a>'
-            url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+            attribution='&copy; <a href="https://www.esri.com/">Esri</a>'
+            url="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}"
+            maxZoom={16}
           />
 
           {/* Auto Fit Map Viewport to all markers */}
